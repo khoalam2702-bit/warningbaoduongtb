@@ -1,0 +1,1505 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Demo cảnh báo BD cấp giờ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Bố cục: bàn điều độ kỹ thuật – cảnh 3D bến cảng bên trái, bảng điều khiển bên phải, bảng dữ liệu dưới cùng */
+:root{
+  --bg:#e9eef0; --surface:#ffffff; --surface-2:#f3f6f7; --ink:#13222a; --muted:#5a6c74; --line:#d2dbdf;
+  --accent:#0d6876; --accent-ink:#ffffff;
+  --st-trang:#ffffff; --st-trang-ink:#13222a; --st-vang:#e3a10b; --st-do:#c8372c; --st-xanh:#2c9a57; --st-xam:#8b979c; --st-cam:#e06a1b;
+  --scene-sky:#c9d8dd; --scene-fog:#c9d8dd;
+  --cap1:#2b7bb9; --cap2:#7a55c7; --cap3:#c04f97; --cap4:#1f9089; --cap5:#a8692a; --cap6:#5562d6;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Roboto Mono",ui-monospace,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c161b; --surface:#13212a; --surface-2:#0f1c23; --ink:#e2ebee; --muted:#8ea2aa; --line:#22343d;
+  --accent:#3db3c2; --accent-ink:#07161b; --st-trang:#e8eef0; --st-trang-ink:#13222a;
+  --scene-sky:#16262f; --scene-fog:#16262f; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0c161b; --surface:#13212a; --surface-2:#0f1c23; --ink:#e2ebee; --muted:#8ea2aa; --line:#22343d;
+  --accent:#3db3c2; --accent-ink:#07161b; --st-trang:#e8eef0; --st-trang-ink:#13222a;
+  --scene-sky:#16262f; --scene-fog:#16262f; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,3.2vw,36px);line-height:1;letter-spacing:.01em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.sub b{color:var(--ink);font-weight:600}
+.testbadge{font-family:var(--f-mono);font-size:12.5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.testbadge .dot{width:9px;height:9px;border-radius:50%;background:var(--st-xam)}
+.testbadge.ok .dot{background:var(--st-xanh)} .testbadge.fail .dot{background:var(--st-do)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;border-radius:var(--r);overflow:hidden;background:var(--scene-sky);border:1px solid var(--line);height:clamp(380px,64vh,660px);min-width:0;touch-action:none}
+.stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hud{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:calc(100% - 24px)}
+.chip{background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;backdrop-filter:blur(6px);width:fit-content}
+.chip .big{font-family:var(--f-display);font-size:22px;font-weight:700;line-height:1.05;display:block}
+.chip .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.legend{position:absolute;left:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11.5px;pointer-events:none;max-width:calc(100% - 24px)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:11px;height:11px;border-radius:3px;border:1px solid var(--line);display:inline-block}
+.toasts{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;max-width:min(330px,calc(100% - 24px))}
+.toast{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:7px 10px;font-size:12.5px;box-shadow:0 6px 18px rgb(0 0 0 / .14);animation:tin .25s ease-out}
+.toast.do{border-left-color:var(--st-do)} .toast.vang{border-left-color:var(--st-vang)} .toast.xanh{border-left-color:var(--st-xanh)} .toast.xam{border-left-color:var(--st-xam)} .toast.cam{border-left-color:var(--st-cam)}
+.toast.out{opacity:0;transition:opacity .5s}
+@keyframes tin{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.hint{position:absolute;right:12px;bottom:12px;font-size:11px;color:var(--muted);background:color-mix(in srgb,var(--surface) 80%,transparent);padding:3px 8px;border-radius:6px;pointer-events:none}
+aside.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.blk{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.blk h2{font-family:var(--f-display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row > *{min-width:0}
+button,select,input,textarea{font:inherit;color:inherit}
+button{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:13px}
+button:hover{border-color:var(--accent)}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type="text"]{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;max-width:100%}
+select.full{width:100%}
+.datebig{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+.slider{position:relative;padding-top:4px}
+.slider input[type=range]{width:100%;accent-color:var(--accent)}
+.marks{position:relative;height:14px;margin:0 7px}
+.mk{position:absolute;top:0;width:3px;height:12px;border-radius:2px;transform:translateX(-1px)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 10px}
+.seg button + button{border-left:1px solid var(--line)}
+textarea{width:100%;min-height:220px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:var(--f-mono);font-size:11.5px;line-height:1.45;resize:vertical}
+.err{color:var(--st-do);font-size:12.5px;white-space:pre-wrap}
+.okmsg{color:var(--st-xanh);font-size:12.5px}
+.small{font-size:12px;color:var(--muted)}
+section.data{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tabs button{font-weight:500}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td.num,th.num{text-align:right;font-family:var(--f-mono)}
+tbody tr{cursor:pointer} tbody tr:hover{background:var(--surface-2)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent}
+.p-TRANG{background:var(--st-trang);color:var(--st-trang-ink);border-color:var(--line)}
+.p-VANG{background:var(--st-vang);color:#2a1d00} .p-DO{background:var(--st-do);color:#fff}
+.p-DA_BD,.p-t1{background:var(--st-xanh);color:#fff} .p-t2{background:color-mix(in srgb,var(--st-xanh) 55%,var(--surface));color:var(--ink);border-color:var(--st-xanh)}
+.p-t9{background:var(--st-xam);color:#fff} .p-t0{background:var(--surface-2);color:var(--ink);border-color:var(--line)} .p-kb{background:transparent;color:var(--muted);border-color:var(--line)}
+.p-cam{background:var(--st-cam);color:#fff}
+.empty{color:var(--muted);padding:14px 4px;font-size:13px}
+.params{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.phead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px 16px}
+.phead h2{font-family:var(--f-display);font-size:22px;margin:0;font-weight:700}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:10px 12px 12px;margin:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+fieldset.wide{grid-column:1/-1}
+legend{font-family:var(--f-display);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:0 4px;font-size:14px}
+.f{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;align-items:center;font-size:13px}
+.f input,.f select{width:100%}
+.f.chk input{width:18px;height:18px;justify-self:start;accent-color:var(--accent)}
+#boxDeu,#boxNN{display:flex;flex-direction:column;gap:8px}
+.unit{color:var(--muted);font-size:11.5px;font-style:normal}
+input[type=number],input[type=date]{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;max-width:100%;font-variant-numeric:tabular-nums}
+table.mini th,table.mini td{padding:4px 5px;white-space:nowrap}
+table.mini tbody tr{cursor:default}
+table.mini input,table.mini select{width:100%;min-width:84px}
+table.mini input[type=date]{min-width:136px}
+table.mini td.ord{font-family:var(--f-mono);color:var(--muted);text-align:center}
+.rm{padding:4px 9px}
+.dirty{color:var(--st-vang);font-size:12.5px;font-weight:600}
+.inval{border-color:var(--st-do)!important;outline:1px solid var(--st-do)}
+dialog#tests{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);max-width:min(760px,calc(100vw - 32px));width:100%;padding:16px}
+dialog::backdrop{background:rgb(0 0 0 / .35)}
+.tc{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.tc .ct{grid-column:2;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+
+details.blk > summary{font-family:var(--f-display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.blk > summary::-webkit-details-marker{display:none}
+details.blk > summary::after{content:"+";font-family:var(--f-mono);font-size:16px;color:var(--accent)}
+details.blk[open] > summary::after{content:"–"}
+.fg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}
+.fg label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.fg label.span2{grid-column:1 / -1}
+.fg input,.fg select{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;color:var(--ink);min-width:0}
+.fg input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.fg .hide{display:none}
+table.dm td{padding:4px 4px;border-bottom:1px solid var(--line)} table.dm tbody tr{cursor:default}
+table.dm input{width:100%;min-width:64px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-family:var(--f-mono);font-size:12.5px;text-align:right}
+table.dm input.cap{text-align:left;font-family:var(--f-body)}
+table.dm button{padding:3px 8px}
+.invalid{border-color:var(--st-do)!important}
+dialog#askDlg{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);width:min(480px,calc(100vw - 32px));padding:0;box-shadow:0 20px 60px rgb(0 0 0 / .3)}
+#askForm{display:flex;flex-direction:column;gap:12px;padding:16px}
+.askhead{display:flex;flex-direction:column;gap:6px;border-left:5px solid var(--st-vang);padding-left:12px}
+.askhead.do{border-left-color:var(--st-do)}
+.askhead h2{font-family:var(--f-display);font-size:24px;line-height:1.1;margin:0;text-wrap:balance}
+.askhead .pill{width:fit-content}
+.askinfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:0;font-size:13px;background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.askinfo dt{color:var(--muted)} .askinfo dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.askbtns{justify-content:flex-end}
+.sop{margin:0;padding:8px 12px 8px 30px;font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:10px;display:flex;flex-direction:column;gap:2px}
+.sop b{color:var(--ink);font-family:var(--f-mono);font-weight:500}
+.fg label.span2{grid-column:1 / -1}
+
+/* Theo dõi chu kỳ BD */
+.caplegend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:0 0 10px}
+.caplegend span{display:inline-flex;align-items:center;gap:6px}
+.capchip{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-variant-numeric:tabular-nums}
+.capchip i{width:12px;height:12px;border-radius:3px;background:var(--c);box-shadow:inset 0 0 0 1px rgb(0 0 0 / .12)}
+.ckwrap{display:flex;flex-direction:column;gap:12px}
+.ck{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.ck.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.ck.done{opacity:.86}
+.ckhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.ckhead h3{font-family:var(--f-display);font-size:20px;line-height:1;margin:0;white-space:nowrap}
+.ckhead .meta{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ckbar{position:relative;min-width:0}
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line)}
+.bar .sg{position:relative;height:100%;background:color-mix(in srgb,var(--c) 22%,var(--surface));border-right:2px solid var(--surface)}
+.bar .sg:last-child{border-right:0}
+.bar .sg b{position:absolute;inset:0 auto 0 0;background:var(--c);width:0}
+.bar .sg .w{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--st-vang) 55%,transparent) 0 4px,transparent 4px 8px)}
+.ticks{position:relative;height:16px;font-size:10.5px;color:var(--muted);font-family:var(--f-mono)}
+.ticks span{position:absolute;top:2px;transform:translateX(-50%);white-space:nowrap}
+.ticks span:first-child{transform:none} .ticks span:last-child{transform:translateX(-100%)}
+.now{position:absolute;top:-4px;width:3px;height:24px;border-radius:2px;background:var(--ink);transform:translateX(-1px)}
+.ck table td,.ck table th{padding:7px 10px}
+.ck table th{background:var(--surface)}
+.ck tr.lv td:first-child{box-shadow:inset 4px 0 0 var(--c)}
+.ck tr.future td{color:var(--muted)}
+.ck tr.isnow td{background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.pill.p-fut{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.pill.p-plan{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--ink);border-color:var(--accent)}
+.lech{font-family:var(--f-mono);font-size:12px}
+.lech.tre{color:var(--st-do)} .lech.som{color:var(--st-xanh)}
+details.old{margin-top:4px} details.old > summary{cursor:pointer;color:var(--muted);font-size:12.5px;padding:4px 0}
+@media (max-width:640px){.ckhead{grid-template-columns:minmax(0,1fr) auto}.ckhead .ckbar{grid-column:1 / -1;grid-row:2}}
+/* Đồng hồ lũy kế & thẻ cuối demo */
+.odo{display:flex;align-items:baseline;gap:8px}
+.odo .v{font-family:var(--f-mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.odo .u{font-size:12px;color:var(--muted)}
+.endcard{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgb(0 0 0 / .2);display:flex;flex-direction:column;gap:8px;width:min(440px,calc(100% - 24px));z-index:5}
+.endcard b{font-family:var(--f-display);font-size:19px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+.rules{display:flex;flex-direction:column;gap:12px}
+.rulesHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.rulesHead h2{font-family:var(--f-display);font-size:26px;margin:0;text-wrap:balance}
+.rulesGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
+figure.rule{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+figure.rule .rh{font-family:var(--f-display);font-size:18px;font-weight:600;display:flex;gap:8px;align-items:center;line-height:1.15}
+figure.rule .rn{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:14px;flex:none}
+figure.rule svg{width:100%;height:auto;background:var(--surface-2);border-radius:8px}
+figure.rule ul{margin:0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.rs-t{fill:var(--ink);font-family:var(--f-body);font-size:11px}
+.rs-s{fill:var(--muted);font-family:var(--f-body);font-size:10px}
+.rs-b{font-weight:600} .rs-on{fill:#fff} .rs-dk{fill:#2a1d00}
+.rs-ink{fill:var(--ink)}
+.rs-ln{stroke:var(--ink);stroke-width:1.4;fill:none}
+.rs-ax{stroke:var(--line);stroke-width:2}
+.rs-dd{stroke:var(--st-do);stroke-width:1.5}
+.rs-vl{stroke:var(--st-vang);stroke-width:1.5}
+.rs-curve{fill:none;stroke:var(--accent);stroke-width:3;stroke-linejoin:round}
+.rs-w{fill:var(--surface);stroke:var(--line)} .rs-w2{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.rs-v{fill:var(--st-vang)} .rs-d{fill:var(--st-do)} .rs-g{fill:var(--st-xanh)} .rs-gl{fill:color-mix(in srgb,var(--st-xanh) 50%,var(--surface));stroke:var(--st-xanh);stroke-width:1.5}
+.rs-a{fill:var(--accent)} .rs-xu{fill:color-mix(in srgb,var(--accent) 12%,transparent)}
+@media (prefers-reduced-motion: reduce){.toast{animation:none}}
+@media (max-width:600px){.toasts{top:auto;bottom:64px;right:12px;left:12px;max-width:none;align-items:stretch}.hint{display:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Demo cảnh báo BD cấp giờ</h1>
+      <div class="sub" id="sub">Cảng Quy Nhơn · FAST FBO · Phân hệ Thiết bị – Sửa chữa</div>
+    </div>
+    <button class="testbadge" id="btnTests" type="button"><span class="dot"></span><span id="testTxt">Đang kiểm thử…</span></button>
+  </header>
+
+  <div class="grid">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Mô phỏng 3D thiết bị và vòng chu kỳ bảo dưỡng"></canvas>
+      <div class="hud">
+        <div class="chip"><span class="big mono" id="hudDate">--/--/----</span><span id="hudSeg">Đoạn 1 · Chu kỳ 1</span></div>
+        <div class="chip"><div class="small">Lũy kế giờ hoạt động từ khi theo dõi</div><div class="odo"><span class="v" id="odo">0,0</span><span class="u" id="odoU">h</span></div></div>
+        <div class="chip mono" id="hudH">Chu kỳ hiện tại: 0 h</div>
+      </div>
+      <div class="toasts" id="toasts" aria-live="polite"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--st-trang)"></i>Chưa đến hạn</span>
+        <span><i class="sw" style="background:var(--st-vang)"></i>Sắp đến hạn</span>
+        <span><i class="sw" style="background:var(--st-do)"></i>Quá hạn</span>
+        <span><i class="sw" style="background:var(--st-xanh)"></i>Đã BD</span>
+        <span><i class="sw" style="background:var(--st-xam)"></i>Hủy do reset</span>
+      </div>
+      <div class="endcard" id="endCard" hidden>
+        <b>Đã chạy hết khoảng demo</b>
+        <span class="small" id="endTxt"></span>
+        <div class="btnrow"><button type="button" class="pri" id="btnMore2">Chạy tiếp 3 tháng (lũy kế giờ)</button><button type="button" id="btnReset2">Chạy lại từ đầu (0 h)</button></div>
+      </div>
+      <div class="hint">Kéo để xoay · cuộn / chụm để phóng to</div>
+    </div>
+
+    <aside class="panel">
+      <div class="blk">
+        <h2>Kịch bản</h2>
+        <select id="selKB" class="full" aria-label="Chọn kịch bản mẫu"></select>
+        <div class="row">
+          <label class="small" for="selModel">Mô hình</label>
+          <select id="selModel">
+            <option value="cau_banh_lop">Cẩu bánh lốp</option>
+            <option value="xe_nang">Xe nâng</option>
+            <option value="cau_khung">Cẩu khung</option>
+            <option value="xe_dau_keo">Xe đầu kéo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="blk">
+        <h2>Thời gian</h2>
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <button class="pri" id="btnPlay" type="button">▶ Chạy</button>
+            <button id="btnStart" type="button" title="Về ngày đầu">⏮</button>
+          </div>
+          <div class="seg" role="group" aria-label="Tốc độ">
+            <button type="button" data-sp="1">×1</button><button type="button" data-sp="3">×3</button><button type="button" data-sp="10">×10</button>
+          </div>
+        </div>
+        <div class="slider">
+          <input type="range" id="rng" min="0" max="60" step="1" value="0" aria-label="Ngày đang xem">
+          <div class="marks" id="marks"></div>
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <span class="datebig" id="dFrom"></span><span class="small">ngày/giây: <b id="spTxt">3</b></span><span class="datebig" id="dTo"></span>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="btnReset">⟲ Chạy lại từ đầu</button>
+          <button type="button" id="btnMore">⏩ Chạy tiếp 3 tháng (lũy kế)</button>
+        </div>
+        <div class="small" id="runInfo"></div>
+        <div class="small" style="margin-top:2px">Dừng lại hỏi lập phiếu bảo dưỡng khi:</div>
+        <div class="toggle"><span>Lập kế hoạch tháng (ngày 26)</span><button type="button" id="tgAskKH" aria-pressed="true">Bật</button></div>
+        <div class="toggle"><span>Vào vùng sắp đến hạn</span><button type="button" id="tgAsk" aria-pressed="true">Bật</button></div>
+        <div class="toggle"><span>Đã quá hạn</span><button type="button" id="tgAskDue" aria-pressed="true">Bật</button></div>
+      </div>
+
+      <div class="blk">
+        <h2>Lập phiếu tại ngày đang xem</h2>
+        <div class="row">
+          <select id="selCap" aria-label="Cấp BD"></select>
+          <button id="btnAddBD" type="button">+ Phiếu bảo dưỡng</button>
+        </div>
+        <button id="btnAddSC" type="button">+ Phiếu sửa chữa lớn (reset giờ)</button>
+        <div class="small" id="quickMsg"></div>
+      </div>
+
+      <details class="blk" open>
+        <summary>Thiết bị &amp; mốc khai báo</summary>
+        <div class="fg">
+          <label>Mã thiết bị<input type="text" id="fMaTb"></label>
+          <label>Biển số quy định<input type="text" id="fBienSo"></label>
+          <label class="span2">Tên thiết bị<input type="text" id="fTenTb"></label>
+          <label>Đơn vị sử dụng<input type="text" id="fDvsd"></label>
+          <label>Theo dõi theo<select id="fDvtTb"><option value="GIO">Giờ hoạt động</option><option value="KM">Km (ô tô)</option></select></label>
+          <label>Ngày mốc<input type="date" id="fNgayMoc"></label>
+          <label><span id="lbGioMoc">Giờ tại mốc (h)</span><input type="number" id="fGioMoc" min="0" step="1"></label>
+          <label class="span2">Cấp BD gần nhất đã làm<select id="fCapGn"></select></label>
+        </div>
+        <div class="small">Giờ tại mốc tính từ lần reset gần nhất (sửa chữa lớn) đến hết ngày mốc.</div>
+      </details>
+
+      <details class="blk">
+        <summary>Định mức cấp giờ</summary>
+        <div class="tblwrap"><table class="dm"><thead><tr><th>Cấp</th><th class="num">Mốc</th><th class="num">Báo trước</th><th class="num" title="Thời gian hoàn thành theo SOP KT01, giờ làm việc">TG hoàn thành</th><th></th></tr></thead><tbody id="dmBody"></tbody></table></div>
+        <button type="button" id="btnAddCap">+ Thêm cấp</button>
+        <div class="small">Thứ tự cấp theo mốc tăng dần; mốc lớn nhất là độ dài một chu kỳ. TG hoàn thành tính bằng giờ làm việc theo SOP KT01 (300/400h: 12 · 600/800h, 4.000 Km: 24 · 1200h trở lên: 36).</div>
+      </details>
+
+      <details class="blk">
+        <summary>Giờ hoạt động</summary>
+        <div class="fg">
+          <label>Cách phát sinh<select id="fCheDo"><option value="deu">Đều mỗi ngày</option><option value="ngau_nhien">Ngẫu nhiên trong khoảng</option></select></label>
+          <label>Đơn vị nhập<select id="fDvt"></select></label>
+          <label class="deu">Số lượng mỗi ngày<input type="number" id="fSoLuong" min="0" step="10"></label>
+          <label class="nn">Tối thiểu / ngày<input type="number" id="fMin" min="0" step="10"></label>
+          <label class="nn">Tối đa / ngày<input type="number" id="fMax" min="0" step="10"></label>
+          <label class="nn">Tỷ lệ ngày nghỉ (%)<input type="number" id="fNghi" min="0" max="90" step="5"></label>
+          <label class="nn">Mã ngẫu nhiên<input type="number" id="fSeed" min="1" step="1"></label>
+        </div>
+        <div class="small" id="gioHint"></div>
+      </details>
+
+      <details class="blk">
+        <summary>Khoảng demo</summary>
+        <div class="fg">
+          <label>Từ ngày<input type="date" id="fTu"></label>
+          <label>Đến ngày<input type="date" id="fDen"></label>
+        </div>
+      </details>
+
+      <details class="blk">
+        <summary>Quy tắc cảnh báo</summary>
+        <div class="toggle"><span>Cách tính mốc</span><span class="seg"><button type="button" id="tgCD">Cố định</button><button type="button" id="tgTR">Trượt</button></span></div>
+        <div class="toggle"><span>Cấp sau bao trùm cấp trước</span><button type="button" id="tgBT" aria-pressed="true">Bật</button></div>
+        <div class="toggle"><span>Lặp chu kỳ sau cấp cuối</span><button type="button" id="tgLap" aria-pressed="true">Bật</button></div>
+        <div class="toggle"><span>Ngày reset SC lớn</span><span class="seg"><button type="button" id="tgR1">Ngày lập</button><button type="button" id="tgR2">Ngày ra</button></span></div>
+      </details>
+      <div id="formMsg" aria-live="polite"></div>
+    </aside>
+  </div>
+
+
+  <section class="data">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="ck" aria-pressed="true">Theo dõi chu kỳ BD</button>
+      <button type="button" role="tab" data-tab="bc" aria-pressed="false">Cảnh báo tại ngày xem</button>
+      <button type="button" role="tab" data-tab="kh" aria-pressed="false">Kế hoạch BD (C4.KTCN.02)</button>
+      <button type="button" role="tab" data-tab="kq" aria-pressed="false">Kết quả BD (C4.KTCN.03)</button>
+      <button type="button" role="tab" data-tab="ph" aria-pressed="false">Phiếu &amp; giờ hoạt động</button>
+      <button type="button" role="tab" data-tab="all" aria-pressed="false">Dữ liệu engine</button>
+      <button type="button" role="tab" data-tab="log" aria-pressed="false">Nhật ký</button>
+    </div>
+    <div class="tblwrap" id="tblBox"></div>
+  </section>
+  <section class="rules" aria-labelledby="rulesTitle">
+    <div class="rulesHead"><h2 id="rulesTitle">Quy tắc cảnh báo đến hạn bảo dưỡng</h2><span class="small">Hình vẽ lấy số liệu theo định mức và tham số đang chọn – đổi tham số thì hình đổi theo.</span></div>
+    <div class="rulesGrid" id="rulesGrid"></div>
+  </section>
+
+</div>
+
+<dialog id="tests">
+  <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="font-family:var(--f-display);margin:0;font-size:22px">Kiểm thử TC1 – TC6</h2><button type="button" id="btnCloseTests">Đóng</button></div>
+  <div class="small">Đối chiếu kết quả engine với bảng kết quả mong đợi đã kiểm chứng (cùng thuật toán thủ tục zsp_cbcg_tinh_tb).</div>
+  <div id="testList"></div>
+</dialog>
+
+
+<dialog id="askDlg" aria-labelledby="askTitle">
+  <form id="askForm" method="dialog" novalidate>
+    <div class="askhead" id="askHead"><span class="pill" id="askPill">Sắp đến hạn</span><h2 id="askTitle">Thực hiện phiếu bảo dưỡng?</h2></div>
+    <dl class="askinfo" id="askInfo"></dl>
+    <div class="fg">
+      <label>Số phiếu<input type="text" id="aSo" required></label>
+      <label>Cấp bảo dưỡng<select id="aCap"></select></label>
+      <label>Ngày lập phiếu<input type="date" id="aNgayCt" required></label>
+      <label>Ngày vào xưởng<input type="date" id="aNgayVao" required></label>
+      <label>Ngày ra thực tế<input type="date" id="aNgayRa" required></label>
+      <label>TG hoàn thành theo SOP<input type="text" id="aTH" readonly></label>
+    </div>
+    <ol class="sop" id="aSop"></ol>
+    <div class="err" id="askErr"></div>
+    <div class="row askbtns">
+      <button type="button" class="pri" id="aYes">Lập phiếu &amp; chạy tiếp</button>
+      <button type="button" id="aNo">Chưa thực hiện, chạy tiếp</button>
+      <button type="button" id="aStop">Dừng xem</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===== ENGINE CẢNH BÁO CẤP GIỜ – cùng thuật toán zsp_cbcg_tinh_tb ===== */
+const CBCG = (() => {
+  const DAY = 864e5;
+  const dnum = s => { const [y, m, d] = String(s).split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / DAY); };
+  const dstr = n => new Date(n * DAY).toISOString().slice(0, 10);
+  const dvn = n => { if (n == null) return ''; const s = dstr(n); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4); };
+  const HS = { GIO: 1, PHUT: 1 / 60, GIAY: 1 / 3600, KM: 1 };
+  const r4 = x => Math.round(x * 1e4) / 1e4;
+
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  function buildHours(P) {
+    const g = P.gio_hoat_dong || {}; const hs = HS[g.dvt_nhap || 'GIO'] ?? 1;
+    const map = new Map();
+    const start = dnum(P.moc_khai_bao.ngay_moc) + 1, end = dnum(P.demo.den_ngay);
+    if (g.che_do === 'danh_sach') {
+      for (const r of g.danh_sach || []) { const k = dnum(r.ngay); map.set(k, (map.get(k) || 0) + Number(r.so_luong) * hs); }
+    } else if (g.che_do === 'ngau_nhien') {
+      const o = g.ngau_nhien || {}; const rnd = mulberry32(Number(o.seed) || 1);
+      const mn = Number(o.min ?? 360), mx = Number(o.max ?? 840), off = Number(o.ty_le_ngay_nghi ?? 0);
+      for (let k = start; k <= end; k++) { const a = rnd(), b = rnd(); if (a < off) continue; map.set(k, Math.round(mn + b * (mx - mn)) * hs); }
+    } else {
+      const q = Number(g.so_luong_moi_ngay ?? 0) * hs;
+      for (let k = start; k <= end; k++) map.set(k, q);
+    }
+    // Ngày thiết bị nằm xưởng (từ ngày vào xưởng đến ngày ra) không phát sinh giờ hoạt động
+    for (const p of P.phieu || []) if (p.ngay_vao && p.ngay_ra) { const a = dnum(p.ngay_vao), b = dnum(p.ngay_ra); for (let k = a; k <= b; k++) map.delete(k); }
+    const days = [...map.keys()].sort((a, b) => a - b); const cum = []; let s = 0;
+    for (const k of days) { s += map.get(k); cum.push(s); }
+    const S = d => { let lo = 0, hi = days.length - 1, ans = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (days[m] <= d) { ans = m; lo = m + 1; } else hi = m - 1; } return ans < 0 ? 0 : cum[ans]; };
+    return { map, days, cum, S, gio: d => map.get(d) || 0 };
+  }
+
+  function tinh(P, denNgay) {
+    const ts = Object.assign({ cach_tinh_moc: 1, lap_chu_ky: true, bao_trum: true, ngay_reset: 1 }, P.tham_so || {});
+    const dm = (P.dinh_muc || []).map(r => ({ ma_cap: String(r.ma_cap), stt: Number(r.stt), gio_dm: Number(r.gio_dm), gio_cb: Number(r.gio_cb ?? 30) })).sort((a, b) => a.stt - b.stt);
+    const C = Math.max(...dm.map(r => r.gio_dm));
+    const hrs = buildHours(P);
+    const den = denNgay ?? dnum(P.demo.den_ngay);
+    const lines = [], log = [], segs = []; let _id = 0;
+    const H = (goc, gioGoc, d) => r4(gioGoc + hrs.S(d) - hrs.S(goc));
+    const crossing = (goc, gioGoc, due, limit) => {
+      if (gioGoc >= due) return goc;
+      const target = due - gioGoc + hrs.S(goc);
+      for (let i = 0; i < hrs.days.length; i++) { const k = hrs.days[i]; if (k <= goc) continue; if (k > limit) return null; if (hrs.cum[i] >= target - 1e-9) return k; }
+      return null;
+    };
+    const ke = (prev, ngaySinh, coSo) => {
+      let ck = prev.chu_ky, r = dm.find(x => x.stt > prev.stt);
+      if (!r) { if (!ts.lap_chu_ky) return null; ck++; r = dm[0]; }
+      const mocCd = (ck - 1) * C + r.gio_dm;
+      const due = Number(ts.cach_tinh_moc) === 2 ? (coSo ?? prev.gio_den_han) + (mocCd - prev.gio_moc_cd) : mocCd;
+      const l = { id: ++_id, doan: prev.doan, loai_goc: prev.loai_goc, ngay_goc: prev.ngay_goc, gio_goc: prev.gio_goc, chu_ky: ck, ma_cap: r.ma_cap, stt: r.stt,
+        gio_moc_cd: mocCd, gio_den_han: r4(due), gio_cb: r.gio_cb, ngay_sinh: ngaySinh, ngay_den_han: null, trang_thai: 0, ngay_dong: null, gio_luc_bd: null, so_ct: null, khai_bao: false };
+      lines.push(l); return l;
+    };
+    const sinh = (doan, goc, gioGoc, limit) => {
+      const Hl = H(goc, gioGoc, limit);
+      for (let v = 0; v < 1000; v++) {
+        const seg = lines.filter(l => l.doan === doan); if (!seg.length) return;
+        const last = seg[seg.length - 1];
+        if (last.trang_thai !== 0 || last.gio_den_han > Hl) return;
+        if (last.ngay_den_han == null) last.ngay_den_han = crossing(goc, gioGoc, last.gio_den_han, limit);
+        if (!ke(last, last.ngay_den_han, null)) return;
+      }
+    };
+    const m = P.moc_khai_bao;
+    const goc = [{ ngay: dnum(m.ngay_moc), loai: 1, gio: Number(m.gio_moc), cap_gn: m.ma_cap_gn ?? null, gio_cap_gn: m.gio_cap_gn ?? null, ref: 'KHAI_BAO' }];
+    const phieu = (P.phieu || []).map(p => ({ so_ct: String(p.so_ct), loai: String(p.loai), ma_cap: String(p.ma_cap), ngay_ct: p.ngay_ct ? dnum(p.ngay_ct) : null, ngay_ra: p.ngay_ra ? dnum(p.ngay_ra) : null }));
+    for (const p of phieu) {
+      if (p.loai === 'SC' && p.ma_cap === 'BIG') {
+        const ng = Number(ts.ngay_reset) === 2 ? p.ngay_ra : p.ngay_ct;
+        if (ng != null && ng <= den) goc.push({ ngay: ng, loai: 3, gio: 0, cap_gn: null, gio_cap_gn: null, ref: p.so_ct });
+      }
+      if (p.loai === 'BD' && p.ngay_ra == null) log.push({ ma_loi: 'BD_NO_NGAY', so_ct: p.so_ct, ngay: p.ngay_ct, noi_dung: 'Phiếu ' + p.so_ct + ' chưa có ngày ra thực tế – không ghi nhận' });
+    }
+    const G = goc.filter(x => x.ngay <= den).sort((a, b) => a.ngay - b.ngay || a.loai - b.loai);
+    G.forEach((g, i) => {
+      const doan = i + 1, ngKet = i + 1 < G.length ? G[i + 1].ngay : den, gioGoc = g.gio;
+      segs.push({ doan, loai: g.loai, ref: g.ref, ngay_goc: g.ngay, gio_goc: gioGoc, ngay_ket: ngKet, reset_end: i + 1 < G.length });
+      const gn = (g.loai === 1 || g.loai === 2) && g.cap_gn != null ? dm.find(r => r.ma_cap === String(g.cap_gn)) : null;
+      if ((g.loai === 1 || g.loai === 2) && g.cap_gn != null && !gn) log.push({ ma_loi: 'CAP_GN', so_ct: '', ngay: g.ngay, noi_dung: 'Cấp gần nhất ' + g.cap_gn + ' không có trong định mức – tính từ cấp đầu' });
+      if (gn) {
+        const ck = gioGoc >= gn.gio_dm ? Math.floor((gioGoc - gn.gio_dm) / C) + 1 : 1; const mc = (ck - 1) * C + gn.gio_dm;
+        const kb = { id: ++_id, doan, loai_goc: g.loai, ngay_goc: g.ngay, gio_goc: gioGoc, chu_ky: ck, ma_cap: gn.ma_cap, stt: gn.stt, gio_moc_cd: mc, gio_den_han: mc, gio_cb: gn.gio_cb,
+          ngay_sinh: g.ngay, ngay_den_han: null, trang_thai: 1, ngay_dong: g.ngay, gio_luc_bd: g.gio_cap_gn != null ? Number(g.gio_cap_gn) : mc, so_ct: 'KHAI_BAO', khai_bao: true };
+        lines.push(kb); ke(kb, g.ngay, kb.gio_luc_bd);
+      } else {
+        const r = dm[0];
+        lines.push({ id: ++_id, doan, loai_goc: g.loai, ngay_goc: g.ngay, gio_goc: gioGoc, chu_ky: 1, ma_cap: r.ma_cap, stt: r.stt, gio_moc_cd: r.gio_dm, gio_den_han: r.gio_dm, gio_cb: r.gio_cb,
+          ngay_sinh: g.ngay, ngay_den_han: null, trang_thai: 0, ngay_dong: null, gio_luc_bd: null, so_ct: null, khai_bao: false });
+      }
+      const evs = phieu.filter(p => p.loai === 'BD' && p.ngay_ra != null && p.ngay_ra > g.ngay && p.ngay_ra <= ngKet)
+        .sort((a, b) => a.ngay_ra - b.ngay_ra || (a.so_ct < b.so_ct ? -1 : a.so_ct > b.so_ct ? 1 : 0));
+      for (const p of evs) {
+        sinh(doan, g.ngay, gioGoc, p.ngay_ra);
+        const seg = lines.filter(l => l.doan === doan);
+        const l = seg.find(x => x.trang_thai === 0 && x.ma_cap === p.ma_cap);
+        if (!l) { log.push({ ma_loi: 'BD_NGOAI', so_ct: p.so_ct, ngay: p.ngay_ra, noi_dung: 'Phiếu BD ' + p.so_ct + ' cấp ' + p.ma_cap + ' không khớp dòng cảnh báo đang mở' }); continue; }
+        const Hbd = H(g.ngay, gioGoc, p.ngay_ra);
+        Object.assign(l, { trang_thai: 1, ngay_dong: p.ngay_ra, gio_luc_bd: Hbd, so_ct: p.so_ct });
+        if (ts.bao_trum) for (const o of seg) if (o.trang_thai === 0 && o.id < l.id) Object.assign(o, { trang_thai: 2, ngay_dong: p.ngay_ra, so_ct: p.so_ct });
+        const last = seg[seg.length - 1];
+        if (last === l) ke(l, p.ngay_ra, Hbd);
+        else if (Number(ts.cach_tinh_moc) === 2) {
+          const nx = seg.find(o => o.id > l.id);
+          if (nx === last && nx.trang_thai === 0 && nx.ngay_den_han == null) nx.gio_den_han = r4(Hbd + (nx.gio_moc_cd - l.gio_moc_cd));
+        }
+      }
+      sinh(doan, g.ngay, gioGoc, ngKet);
+      if (i + 1 < G.length) for (const l of lines) if (l.doan === doan && l.trang_thai === 0) Object.assign(l, { trang_thai: 9, ngay_dong: ngKet });
+    });
+    const xuong = new Set(); for (const p of P.phieu || []) if (p.ngay_vao && p.ngay_ra) for (let k = dnum(p.ngay_vao); k <= dnum(p.ngay_ra); k++) xuong.add(k);
+    const d0 = dnum(P.moc_khai_bao.ngay_moc) + 1;
+    // giờ TB/ngày 30 ngày gần nhất: chỉ tính các ngày đã có số liệu và không nằm xưởng
+    const tbNgay = X => { let n = 0; for (let k = Math.max(d0, X - 29); k <= X; k++) if (!xuong.has(k)) n++; return n ? (hrs.S(X) - hrs.S(X - 30)) / n : 0; };
+    return { lines, log, segs, C, dm, hrs, H, ts, tbNgay };
+  }
+
+  function baoCao(R, X, opts = {}) {
+    const out = [];
+    for (const l of R.lines) {
+      if (l.khai_bao || l.ngay_sinh > X) continue;
+      const closedBefore = l.trang_thai !== 0 && l.ngay_dong != null && l.ngay_dong <= X;
+      if (closedBefore && !(opts.hienDaBD && (l.trang_thai === 1 || l.trang_thai === 2))) continue;
+      const Hx = closedBefore ? (l.gio_luc_bd ?? l.gio_den_han) : R.H(l.ngay_goc, l.gio_goc, X);
+      const con = r4(l.gio_den_han - Hx);
+      const mau = closedBefore ? 'DA_BD' : con <= 0 ? 'DO' : con <= l.gio_cb ? 'VANG' : 'TRANG';
+      const tb = R.tbNgay ? R.tbNgay(X) : (R.hrs.S(X) - R.hrs.S(X - 30)) / 30;
+      const duBao = con > 0 && tb > 0 && !closedBefore ? X + Math.ceil(con / tb) : null;
+      out.push({ line: l, Hx, con, mau, duBao });
+    }
+    const ord = { DO: 1, VANG: 2, TRANG: 3, DA_BD: 4 };
+    return out.sort((a, b) => ord[a.mau] - ord[b.mau] || a.line.id - b.line.id);
+  }
+
+  function segmentAt(R, X) { let s = null; for (const g of R.segs) if (g.ngay_goc <= X) s = g; return s; }
+
+  const isWork = n => new Date(n * DAY).getUTCDay() !== 0;               // làm việc trừ Chủ nhật
+  const addWork = (n, k) => { let d = n; while (k > 0) { d++; if (isWork(d)) k--; } return d; };
+  const nextWork = n => { let d = n; while (!isWork(d)) d++; return d; };
+  // SOP KT01 – thời gian hoàn thành bảo dưỡng (giờ làm việc)
+  const sopGioTH = (gio, dvt) => dvt === 'KM' ? (gio <= 4000 ? 24 : 36) : gio <= 400 ? 12 : gio <= 800 ? 24 : 36;
+  return { dnum, dstr, dvn, tinh, baoCao, segmentAt, buildHours, isWork, addWork, nextWork, sopGioTH };
+})();
+
+/* ===== KỊCH BẢN MẪU & KIỂM THỬ ===== */
+const KICH_BAN = (() => {
+  const base = () => ({
+    thiet_bi: { ma_tb: 'TB0012', ten_tb: 'Cẩu bánh lốp KATO 25T', bien_so: 'CBL-01', dvsd: 'Đội Cơ giới', dvt: 'GIO', mo_hinh: 'cau_banh_lop' },
+    dinh_muc: [
+      { ma_cap: '300', stt: 1, gio_dm: 300, gio_cb: 30 }, { ma_cap: '600', stt: 2, gio_dm: 600, gio_cb: 30 },
+      { ma_cap: '900', stt: 3, gio_dm: 900, gio_cb: 30 }, { ma_cap: '1200', stt: 4, gio_dm: 1200, gio_cb: 30 }],
+    tham_so: { cach_tinh_moc: 1, lap_chu_ky: true, bao_trum: true, ngay_reset: 1 },
+    moc_khai_bao: { ngay_moc: '2026-10-31', gio_moc: 820, ma_cap_gn: '600', gio_cap_gn: null },
+    gio_hoat_dong: { che_do: 'deu', dvt_nhap: 'PHUT', so_luong_moi_ngay: 600, ngau_nhien: { min: 360, max: 840, seed: 12, ty_le_ngay_nghi: 0.1 }, danh_sach: [] },
+    phieu: [
+      { so_ct: 'TH001', loai: 'BD', ma_cap: '900', ngay_ct: '2026-11-09', ngay_ra: '2026-11-10' },
+      { so_ct: 'TH009', loai: 'SC', ma_cap: 'BIG', ngay_ct: '2026-12-18', ngay_ra: '2026-12-24' }],
+    demo: { tu_ngay: '2026-10-31', den_ngay: '2026-12-30', toc_do_ngay_moi_giay: 3, tu_chay: true }
+  });
+  const mk = (f) => { const p = base(); f(p); return p; };
+  const dmx = (dvt, cb, arr) => arr.map((g, i) => ({ ma_cap: String(g), stt: i + 1, gio_dm: g, gio_cb: cb, gio_th: (g <= 400 && dvt !== 'KM') ? 12 : (g <= 800 || (dvt === 'KM' && g <= 4000)) ? 24 : 36 }));
+  const thucTe = (tb, dm, moc, gio) => ({
+    thiet_bi: tb, dinh_muc: dm,
+    tham_so: { cach_tinh_moc: 1, lap_chu_ky: true, bao_trum: true, ngay_reset: 1 },
+    moc_khai_bao: moc,
+    gio_hoat_dong: Object.assign({ che_do: 'ngau_nhien', danh_sach: [] }, gio),
+    phieu: [],
+    demo: { tu_ngay: '2026-10-31', den_ngay: '2027-04-30', toc_do_ngay_moi_giay: 4, tu_chay: true }
+  });
+  const presets = [
+    { id: 'CBL', ten: 'Cẩu bánh lốp KATO 25T – cấp 300/600/900/1200 h', P: thucTe(
+      { ma_tb: 'TB0012', ten_tb: 'Cẩu bánh lốp KATO 25T', bien_so: 'CBL-01', dvsd: 'Đội Cơ giới', dvt: 'GIO', mo_hinh: 'cau_banh_lop' },
+      dmx('GIO', 60, [300, 600, 900, 1200]), { ngay_moc: '2026-10-31', gio_moc: 0, ma_cap_gn: null, gio_cap_gn: null },
+      { dvt_nhap: 'GIO', so_luong_moi_ngay: 10, ngau_nhien: { min: 6, max: 14, seed: 12, ty_le_ngay_nghi: 0.08 } }) },
+    { id: 'XN', ten: 'Xe nâng 5T – cấp 400/800/1200/1600 h', P: thucTe(
+      { ma_tb: 'TB0031', ten_tb: 'Xe nâng hàng 5T', bien_so: 'XN-05', dvsd: 'Đội Cơ giới', dvt: 'GIO', mo_hinh: 'xe_nang' },
+      dmx('GIO', 50, [400, 800, 1200, 1600]), { ngay_moc: '2026-10-31', gio_moc: 0, ma_cap_gn: null, gio_cap_gn: null },
+      { dvt_nhap: 'GIO', so_luong_moi_ngay: 8, ngau_nhien: { min: 5, max: 10, seed: 7, ty_le_ngay_nghi: 0.1 } }) },
+    { id: 'RTG', ten: 'Cẩu khung RTG 40T – cấp 300/600/1200/1800 h', P: thucTe(
+      { ma_tb: 'TB0048', ten_tb: 'Cẩu khung bánh lốp RTG 40T', bien_so: 'RTG-02', dvsd: 'Đội Cơ giới', dvt: 'GIO', mo_hinh: 'cau_khung' },
+      dmx('GIO', 80, [300, 600, 1200, 1800]), { ngay_moc: '2026-10-31', gio_moc: 0, ma_cap_gn: null, gio_cap_gn: null },
+      { dvt_nhap: 'GIO', so_luong_moi_ngay: 15, ngau_nhien: { min: 11, max: 19, seed: 3, ty_le_ngay_nghi: 0.06 } }) },
+    { id: 'DK', ten: 'Xe đầu kéo – cấp 4.000/8.000/12.000 Km', P: thucTe(
+      { ma_tb: 'TB0063', ten_tb: 'Xe đầu kéo container', bien_so: 'DK-07', dvsd: 'Đội Vận tải', dvt: 'KM', mo_hinh: 'xe_dau_keo' },
+      dmx('KM', 600, [4000, 8000, 12000]), { ngay_moc: '2026-10-31', gio_moc: 0, ma_cap_gn: null, gio_cap_gn: null },
+      { dvt_nhap: 'KM', so_luong_moi_ngay: 160, ngau_nhien: { min: 90, max: 230, seed: 21, ty_le_ngay_nghi: 0.12 } }) }];
+  const list = [
+    { id: 'TC1', ten: 'TC1 – Mặc định: BD 900 ngày 10/11, SC lớn 18/12', P: base() },
+    { id: 'TC2', ten: 'TC2 – Mốc trượt theo giờ thực tế', P: mk(p => { p.tham_so.cach_tinh_moc = 2; p.phieu = [p.phieu[0]]; }) },
+    { id: 'TC3', ten: 'TC3 – Bỏ qua 900, làm 1200 ngày 09/12', P: mk(p => { p.phieu = [{ so_ct: 'TH002', loai: 'BD', ma_cap: '1200', ngay_ct: '2026-12-09', ngay_ra: '2026-12-09' }]; }) },
+    { id: 'TC4', ten: 'TC4 – BD 900 làm sớm ngày 03/11', P: mk(p => { p.phieu = [{ so_ct: 'TH003', loai: 'BD', ma_cap: '900', ngay_ct: '2026-11-03', ngay_ra: '2026-11-03' }]; }) },
+    { id: 'TC5', ten: 'TC5 – Phiếu sai cấp 300 ngày 05/11', P: mk(p => { p.phieu = [{ so_ct: 'TH004', loai: 'BD', ma_cap: '300', ngay_ct: '2026-11-05', ngay_ra: '2026-11-05' }]; }) },
+    { id: 'TC6', ten: 'TC6 – Không có phiếu', P: mk(p => { p.phieu = []; }) }];
+  const all = [...presets, ...list];
+  return { base, list, presets, all, get: id => JSON.parse(JSON.stringify(all.find(x => x.id === id).P)) };
+})();
+
+function chayKiemThu() {
+  const { dnum, tinh, baoCao } = CBCG; const res = [];
+  const ok = (ten, cond, ct) => res.push({ ten, pass: !!cond, ct: ct || '' });
+  const fx = (l, o) => Object.entries(o).every(([k, v]) => (k.startsWith('ngay') && v != null ? l[k] === dnum(v) : l[k] === v));
+  const desc = l => l ? `${l.ma_cap} ck${l.chu_ky} mốc ${l.gio_den_han} tt${l.trang_thai}` : 'không có';
+  // TC1
+  let R = tinh(KICH_BAN.get('TC1'), dnum('2026-12-30')); const L = R.lines;
+  const exp1 = [
+    { ma_cap: '600', khai_bao: true, trang_thai: 1 },
+    { ma_cap: '900', gio_den_han: 900, ngay_den_han: '2026-11-08', trang_thai: 1, ngay_dong: '2026-11-10', gio_luc_bd: 920 },
+    { ma_cap: '1200', gio_den_han: 1200, ngay_den_han: '2026-12-08', trang_thai: 9, ngay_dong: '2026-12-18' },
+    { ma_cap: '300', chu_ky: 2, gio_den_han: 1500, trang_thai: 9, ngay_dong: '2026-12-18' },
+    { ma_cap: '300', doan: 2, gio_den_han: 300, trang_thai: 0 }];
+  ok('TC1 – Toàn bộ dòng (5 dòng)', L.length === 5 && exp1.every((e, i) => fx(L[i], e)), L.map(desc).join(' | '));
+  const bc = [
+    ['2026-10-31', [['900', 820, 80, 'TRANG']]], ['2026-11-05', [['900', 870, 30, 'VANG']]],
+    ['2026-11-08', [['900', 900, 0, 'DO'], ['1200', 900, 300, 'TRANG']]], ['2026-11-10', [['1200', 920, 280, 'TRANG']]],
+    ['2026-12-05', [['1200', 1170, 30, 'VANG']]], ['2026-12-17', [['1200', 1290, -90, 'DO'], ['300', 1290, 210, 'TRANG']]],
+    ['2026-12-20', [['300', 20, 280, 'TRANG']]]];
+  for (const [d, rows] of bc) {
+    const b = baoCao(R, dnum(d));
+    const pass = b.length === rows.length && rows.every((r, i) => b[i].line.ma_cap === r[0] && b[i].Hx === r[1] && b[i].con === r[2] && b[i].mau === r[3]);
+    ok('TC1 – Báo cáo ngày ' + CBCG.dvn(dnum(d)), pass, b.map(x => `${x.line.ma_cap}: ${x.Hx}h còn ${x.con} ${x.mau}`).join(' | '));
+  }
+  // TC2
+  R = tinh(KICH_BAN.get('TC2'), dnum('2026-12-30'));
+  const l1200 = R.lines.find(l => l.ma_cap === '1200'), l300 = R.lines.find(l => l.ma_cap === '300' && l.chu_ky === 2);
+  ok('TC2 – Trượt: 1200 → 1220h, đến hạn 10/12; 300 ck2 → 1520h', l1200 && l1200.gio_den_han === 1220 && l1200.ngay_den_han === dnum('2026-12-10') && l300 && l300.gio_den_han === 1520, desc(l1200) + ' | ' + desc(l300));
+  // TC3
+  R = tinh(KICH_BAN.get('TC3'), dnum('2026-12-30'));
+  const a = R.lines.find(l => l.ma_cap === '900'), b2 = R.lines.find(l => l.ma_cap === '1200'), c = R.lines.find(l => l.ma_cap === '300' && l.chu_ky === 2);
+  ok('TC3 – Bao trùm: 900 tt2, 1200 BD tại 1210h, 300 ck2 mở', a && a.trang_thai === 2 && a.so_ct === 'TH002' && b2 && b2.trang_thai === 1 && b2.gio_luc_bd === 1210 && c && c.gio_den_han === 1500 && c.trang_thai === 0, [a, b2, c].map(desc).join(' | '));
+  // TC4
+  R = tinh(KICH_BAN.get('TC4'), dnum('2026-11-15'));
+  const d4 = R.lines.find(l => l.ma_cap === '900'), e4 = R.lines.find(l => l.ma_cap === '1200');
+  ok('TC4 – BD sớm: 900 đóng 03/11 tại 850h, 1200 mở', d4 && d4.trang_thai === 1 && d4.ngay_dong === dnum('2026-11-03') && d4.gio_luc_bd === 850 && d4.ngay_den_han == null && e4 && e4.trang_thai === 0, desc(d4) + ' | ' + desc(e4));
+  // TC5
+  R = tinh(KICH_BAN.get('TC5'), dnum('2026-11-15'));
+  ok('TC5 – Sai cấp: log BD_NGOAI TH004', R.log.some(x => x.ma_loi === 'BD_NGOAI' && x.so_ct === 'TH004'), R.log.map(x => x.ma_loi + ' ' + x.so_ct).join(', ') || 'không có log');
+  // TC6
+  R = tinh(KICH_BAN.get('TC6'), dnum('2026-11-15'));
+  const f6 = R.lines.find(l => l.ma_cap === '900'), g6 = R.lines.find(l => l.ma_cap === '1200');
+  ok('TC6 – Không phiếu: 900 đến hạn 08/11 mở, 1200 mở', f6 && f6.trang_thai === 0 && f6.ngay_den_han === dnum('2026-11-08') && g6 && g6.trang_thai === 0 && g6.ngay_den_han == null, desc(f6) + ' | ' + desc(g6));
+  return res;
+}
+
+
+</script>
+<script>
+(() => {
+  'use strict';
+  const { dnum, dstr, dvn, tinh, baoCao, segmentAt, addWork, nextWork, sopGioTH } = CBCG;
+  const $ = id => document.getElementById(id);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nf = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
+  const nf1 = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const MAU_TXT = { TRANG: 'Chưa đến hạn', VANG: 'Sắp đến hạn', DO: 'Quá hạn', DA_BD: 'Đã bảo trì' };
+  const TT_TXT = { 0: 'Đang mở', 1: 'Đã BD', 2: 'Bao trùm', 9: 'Hủy do reset' };
+  const MO_HINH = ['cau_banh_lop', 'xe_nang', 'cau_khung', 'xe_dau_keo'];
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ---------------- trạng thái ---------------- */
+  let P = KICH_BAN.get('CBL'), R = null, EV = [];
+  const U = () => (P.thiet_bi && P.thiet_bi.dvt === 'KM' ? 'km' : 'h');
+  const UL = () => (U() === 'km' ? 'Km' : 'Giờ');
+  let denGoc = null;
+  let t0 = 0, t1 = 1, t = 0, playing = false, speed = 3, lastX = null, tab = 'ck';
+
+  /* ---------------- kiểm thử ---------------- */
+  const tests = chayKiemThu();
+  (() => {
+    const pass = tests.filter(x => x.pass).length, b = $('btnTests');
+    b.classList.add(pass === tests.length ? 'ok' : 'fail');
+    $('testTxt').textContent = `Kiểm thử: ${pass}/${tests.length} PASS`;
+    $('testList').innerHTML = tests.map(x => `<div class="tc"><span class="pill ${x.pass ? 'p-t1' : 'p-DO'}">${x.pass ? 'PASS' : 'FAIL'}</span><span>${esc(x.ten)}</span><span class="ct">${esc(x.ct)}</span></div>`).join('');
+    b.onclick = () => $('tests').showModal(); $('btnCloseTests').onclick = () => $('tests').close();
+  })();
+
+  /* ---------------- kiểm tra tham số ---------------- */
+  const isDate = s => { if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(s + 'T00:00:00Z'); return !isNaN(d) && d.toISOString().slice(0, 10) === s; };
+  function merge(b, o) { if (Array.isArray(b)) return Array.isArray(o) ? o : b; if (b && typeof b === 'object') { const r = { ...b }; if (o && typeof o === 'object') for (const k of Object.keys(o)) r[k] = k in b ? merge(b[k], o[k]) : o[k]; return r; } return o === undefined ? b : o; }
+  function kiemTra(o) {
+    const e = [], w = [], isKm = o.thiet_bi.dvt === 'KM', un = isKm ? 'Km' : 'giờ';
+    if (!String(o.thiet_bi.ma_tb || '').trim()) e.push('Thiết bị: nhập mã thiết bị.');
+    const dm = o.dinh_muc || [], caps = new Set();
+    if (!dm.length) e.push('Định mức: cần ít nhất 1 cấp bảo dưỡng.');
+    dm.forEach((r, i) => {
+      const ten = r.ma_cap ? 'cấp ' + r.ma_cap : 'dòng ' + (i + 1);
+      if (!r.ma_cap) e.push(`Định mức dòng ${i + 1}: nhập tên cấp.`);
+      else if (caps.has(r.ma_cap)) e.push(`Định mức: cấp ${r.ma_cap} bị trùng.`);
+      caps.add(r.ma_cap);
+      if (!(r.gio_dm > 0)) e.push(`Định mức ${ten}: mốc phải lớn hơn 0.`);
+      else if (i > 0 && !(r.gio_dm > dm[i - 1].gio_dm)) e.push(`Định mức ${ten}: mốc trùng với cấp ${dm[i - 1].ma_cap}.`);
+      if (!(r.gio_cb >= 0)) e.push(`Định mức ${ten}: số báo trước phải từ 0 trở lên.`);
+      else if (r.gio_dm > 0 && r.gio_cb >= r.gio_dm) w.push(`Định mức ${ten}: số báo trước ≥ mốc, cấp này sẽ vàng ngay từ đầu.`);
+      if (!(r.gio_th > 0)) e.push(`Định mức ${ten}: thời gian hoàn thành phải lớn hơn 0 giờ làm việc.`);
+    });
+    const m = o.moc_khai_bao;
+    if (!isDate(m.ngay_moc)) e.push('Mốc khai báo: chọn ngày mốc.');
+    if (!(m.gio_moc >= 0)) e.push(`Mốc khai báo: số ${un} tại mốc phải từ 0 trở lên.`);
+    if (m.ma_cap_gn != null && !caps.has(m.ma_cap_gn)) w.push(`Cấp gần nhất ${m.ma_cap_gn} không còn trong định mức – hệ thống tính từ cấp đầu.`);
+    const d = o.demo;
+    if (!isDate(d.tu_ngay) || !isDate(d.den_ngay)) e.push('Khoảng demo: chọn đủ từ ngày và đến ngày.');
+    else if (dnum(d.den_ngay) <= dnum(d.tu_ngay)) e.push('Khoảng demo: đến ngày phải sau từ ngày.');
+    else if (dnum(d.den_ngay) - dnum(d.tu_ngay) > 1830) e.push('Khoảng demo: tối đa 1.830 ngày (khoảng 5 năm). Chọn Chạy lại từ đầu để bắt đầu lượt mới.');
+    if (isDate(m.ngay_moc) && isDate(d.den_ngay) && dnum(m.ngay_moc) >= dnum(d.den_ngay)) e.push('Mốc khai báo phải trước ngày kết thúc demo.');
+    const g = o.gio_hoat_dong, HS = { GIO: 1, PHUT: 1 / 60, KM: 1 }, hs = HS[g.dvt_nhap] || 1;
+    if (isKm !== (g.dvt_nhap === 'KM')) e.push(isKm ? 'Giờ hoạt động: thiết bị theo dõi Km thì đơn vị nhập là Km.' : 'Giờ hoạt động: thiết bị theo dõi giờ thì đơn vị nhập là Giờ hoặc Phút.');
+    const lim = isKm ? 800 : Math.round(24 / hs), dv = { GIO: 'giờ', PHUT: 'phút', KM: 'Km' }[g.dvt_nhap] || '';
+    if (g.che_do === 'deu' && !(g.so_luong_moi_ngay >= 0 && g.so_luong_moi_ngay <= lim)) e.push(`Giờ hoạt động: số ${dv} mỗi ngày phải từ 0 đến ${nf.format(lim)}.`);
+    if (g.che_do === 'ngau_nhien') {
+      const n = g.ngau_nhien;
+      if (!(n.min >= 0 && n.max >= n.min && n.max <= lim)) e.push(`Giờ hoạt động: cần 0 ≤ tối thiểu ≤ tối đa ≤ ${nf.format(lim)} ${dv}/ngày.`);
+      if (!(n.ty_le_ngay_nghi >= 0 && n.ty_le_ngay_nghi <= 0.9)) e.push('Giờ hoạt động: tỷ lệ ngày nghỉ từ 0% đến 90%.');
+    }
+    const seen = new Set();
+    (o.phieu || []).forEach((p, i) => {
+      const ten = p.so_ct ? 'Phiếu ' + p.so_ct : `Phiếu dòng ${i + 1}`;
+      if (!p.so_ct) e.push(`Phiếu dòng ${i + 1}: nhập số phiếu.`); else if (seen.has(p.so_ct)) e.push(`Phiếu ${p.so_ct}: số phiếu bị trùng.`); seen.add(p.so_ct);
+      if (!isDate(p.ngay_ct)) e.push(`${ten}: chọn ngày lập.`);
+      if (p.ngay_vao && !isDate(p.ngay_vao)) e.push(`${ten}: ngày vào xưởng không hợp lệ.`);
+      if (p.ngay_ra && !isDate(p.ngay_ra)) e.push(`${ten}: ngày ra không hợp lệ.`);
+      if (isDate(p.ngay_ct) && isDate(p.ngay_vao) && dnum(p.ngay_vao) < dnum(p.ngay_ct)) e.push(`${ten}: ngày vào xưởng trước ngày lập.`);
+      if (isDate(p.ngay_vao) && isDate(p.ngay_ra) && dnum(p.ngay_ra) < dnum(p.ngay_vao)) e.push(`${ten}: ngày ra trước ngày vào xưởng.`);
+      if (p.loai === 'BD' && !caps.has(p.ma_cap)) w.push(`${ten}: cấp ${p.ma_cap} không có trong định mức – ghi nhật ký BD ngoài kế hoạch.`);
+    });
+    return { e, w };
+  }
+
+  /* ---------------- 3D: khởi tạo ---------------- */
+  const cv = $('cv'), stage = $('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 220);
+  const hemi = new THREE.HemisphereLight(0xe4eef2, 0x3b342b, 0.8); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffd2a1, 1.05); sun.position.set(-11, 15, 9); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 1, far: 50 }); scene.add(sun);
+  const fill = new THREE.PointLight(0x7fd3dd, 0, 30); fill.position.set(4, 6, 6); scene.add(fill);
+
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.75, metalness: 0.1 }, o));
+  const box = (w, h, d, m) => { const x = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); x.castShadow = x.receiveShadow = true; return x; };
+  const cyl = (r1, r2, h, m, s = 16) => { const x = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, s), m); x.castShadow = true; return x; };
+
+  // Bến cảng
+  const world = new THREE.Group(); scene.add(world);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(70, 28), M(0x9ea6a6, { roughness: 0.95 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, -5); ground.receiveShadow = true; world.add(ground);
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(90, 40, 40, 20), M(0x2a5c6b, { roughness: 0.35, metalness: 0.2 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, -0.55, 29); world.add(water);
+  const curb = box(70, 0.6, 0.6, M(0x8a8f8c)); curb.position.set(0, -0.2, 9.2); world.add(curb);
+  for (let x = -30; x <= 30; x += 5) { const b = cyl(0.22, 0.28, 0.5, M(0x2b3236, { metalness: 0.4 })); b.position.set(x, 0.25, 8.6); world.add(b); }
+  const laneM = M(0xe8e3c8, { roughness: 0.9 });
+  for (let x = -32; x < 32; x += 3) { const l = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.14), laneM); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.011, 4.2 + 3.4); world.add(l); }
+  const contCols = [0xa8473a, 0x2f5f86, 0x5d7f4a, 0xc0892d, 0x6b6f75, 0x8c3f5e];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = -6; i <= 6; i++) for (let row = 0; row < 2; row++) {
+    const h = 1 + Math.floor(rnd() * 3);
+    for (let k = 0; k < h; k++) { const c = box(2.5, 1.3, 1.3, M(contCols[Math.floor(rnd() * contCols.length)], { roughness: 0.6 })); c.position.set(i * 2.7, 0.65 + k * 1.32, -13 - row * 1.5); world.add(c); }
+  }
+  for (const x of [-14, 14]) { const p = cyl(0.08, 0.1, 7, M(0x5b6266)); p.position.set(x, 3.5, 7.4); world.add(p); const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffe4a8 })); lamp.position.set(x, 7.05, 7.4); world.add(lamp); }
+
+  /* ---------------- mô hình thiết bị ---------------- */
+  const machineRoot = new THREE.Group(); scene.add(machineRoot);
+  let MC = null;
+  const matBody = M(0xe9ecea, { roughness: 0.55 }), matTeal = M(0x0d6876, { roughness: 0.5 }), matDark = M(0x24292c, { roughness: 0.9 }),
+    matGlass = M(0x24414c, { roughness: 0.15, metalness: 0.5 }), matSteel = M(0x7c8689, { metalness: 0.6, roughness: 0.4 }), matOrange = M(0xc8642a, { roughness: 0.6 });
+  matSteel.userData.shared = true;
+  const wheel = (r, w) => { const g = new THREE.Group(); const tire = cyl(r, r, w, matDark, 20); tire.rotation.x = Math.PI / 2; g.add(tire); const hub = cyl(r * 0.45, r * 0.45, w + 0.02, matSteel, 12); hub.rotation.x = Math.PI / 2; g.add(hub); return g; };
+  function buildMachine(kind) {
+    const g = new THREE.Group(), wheels = []; let anim = () => { }, beacon = new THREE.Vector3(), exhaust = new THREE.Vector3(), ledY = 4;
+    const addW = (x, y, z, r, w) => { const k = wheel(r, w); k.position.set(x, y, z); g.add(k); wheels.push(k); };
+    if (kind === 'xe_nang') {
+      const body = box(2.2, 1.0, 1.5, matBody); body.position.set(0, 0.95, 0); g.add(body);
+      const cw = box(0.6, 1.1, 1.5, matTeal); cw.position.set(-1.25, 1.0, 0); g.add(cw);
+      for (const [x, z] of [[-0.7, -0.65], [-0.7, 0.65], [0.6, -0.65], [0.6, 0.65]]) { const p = box(0.08, 1.5, 0.08, matDark); p.position.set(x, 2.2, z); g.add(p); }
+      const roof = box(1.45, 0.08, 1.4, matDark); roof.position.set(-0.05, 2.95, 0); g.add(roof);
+      const seat = box(0.5, 0.5, 0.6, matDark); seat.position.set(-0.3, 1.7, 0); g.add(seat);
+      for (const z of [-0.45, 0.45]) { const m = box(0.14, 3.2, 0.14, matSteel); m.position.set(1.3, 1.9, z); g.add(m); }
+      const carriage = new THREE.Group(); carriage.position.set(1.42, 0.5, 0); g.add(carriage);
+      const plate = box(0.12, 0.9, 1.1, matDark); plate.position.set(0, 0.45, 0); carriage.add(plate);
+      for (const z of [-0.32, 0.32]) { const f = box(1.3, 0.07, 0.14, matSteel); f.position.set(0.65, 0.05, z); carriage.add(f); }
+      const pal = box(1.2, 0.9, 1.0, matOrange); pal.position.set(0.65, 0.55, 0); carriage.add(pal);
+      addW(0.75, 0.42, 0.8, 0.42, 0.3); addW(0.75, 0.42, -0.8, 0.42, 0.3); addW(-0.85, 0.34, 0.8, 0.34, 0.26); addW(-0.85, 0.34, -0.8, 0.34, 0.26);
+      beacon.set(-0.05, 3.1, 0); exhaust.set(-1.0, 3.0, -0.55); ledY = 4.3;
+      anim = (time, run) => { carriage.position.y = 0.5 + (run ? (Math.sin(time * 1.4) * 0.5 + 0.5) * 1.6 : 0); };
+    } else if (kind === 'cau_khung') {
+      for (const x of [-2.4, 2.4]) for (const z of [-2.2, 2.2]) { const l = box(0.35, 5, 0.35, matBody); l.position.set(x, 3.0, z); g.add(l); addW(x, 0.35, z, 0.35, 0.3); }
+      for (const z of [-2.2, 2.2]) { const b = box(5.4, 0.5, 0.45, matTeal); b.position.set(0, 5.6, z); g.add(b); const s = box(5.0, 0.3, 0.4, matBody); s.position.set(0, 0.85, z); g.add(s); }
+      for (const x of [-2.4, 2.4]) { const c = box(0.4, 0.45, 4.8, matBody); c.position.set(x, 5.6, 0); g.add(c); }
+      const trolley = new THREE.Group(); trolley.position.set(0, 6.0, 0); g.add(trolley);
+      trolley.add(Object.assign(box(1.4, 0.5, 1.2, matOrange), {}));
+      const cabG = box(0.8, 0.7, 0.7, matGlass); cabG.position.set(0.9, -0.6, 0); trolley.add(cabG);
+      const rope = cyl(0.025, 0.025, 2.4, matDark, 6); rope.position.set(0, -1.4, 0); trolley.add(rope);
+      const spreader = box(2.6, 0.18, 0.8, matSteel); spreader.position.set(0, -2.65, 0); trolley.add(spreader);
+      const ct = box(2.5, 1.2, 1.25, M(0x2f5f86, { roughness: 0.6 })); ct.position.set(0, -3.35, 0); trolley.add(ct);
+      beacon.set(0, 6.2, 0); exhaust.set(-2.4, 6.1, -2.2); ledY = 7.4;
+      anim = (time, run) => { if (run) { trolley.position.x = Math.sin(time * 0.6) * 1.4; trolley.position.y = 6.0 + (Math.sin(time * 1.1) * 0.5 + 0.5) * 0.6; } };
+    } else if (kind === 'xe_dau_keo') {
+      const ch = box(6.8, 0.35, 1.3, matDark); ch.position.set(0.3, 0.75, 0); g.add(ch);
+      const cab = box(1.5, 1.6, 1.9, matTeal); cab.position.set(-2.6, 1.75, 0); g.add(cab);
+      const win = box(0.05, 0.6, 1.6, matGlass); win.position.set(-3.36, 2.1, 0); g.add(win);
+      const deck = box(5.2, 0.2, 2.2, matSteel); deck.position.set(1.0, 1.05, 0); g.add(deck);
+      const ct = box(5.0, 2.0, 2.1, M(0xa8473a, { roughness: 0.6 })); ct.position.set(1.0, 2.15, 0); g.add(ct);
+      for (const x of [-2.7, -1.2, 2.2, 3.1]) for (const z of [-0.95, 0.95]) addW(x, 0.5, z, 0.5, 0.34);
+      beacon.set(-2.6, 2.7, 0); exhaust.set(-1.85, 3.0, 0.75); ledY = 4.6;
+    } else {
+      const ch = box(5.2, 0.6, 2.0, matBody); ch.position.set(0, 1.0, 0); g.add(ch);
+      const stripe = box(5.22, 0.14, 2.02, matTeal); stripe.position.set(0, 0.84, 0); g.add(stripe);
+      for (const x of [-1.8, -0.6, 1.5]) for (const z of [-1.0, 1.0]) addW(x, 0.5, z, 0.5, 0.38);
+      const tt = cyl(0.85, 0.85, 0.25, matSteel, 24); tt.position.set(0.3, 1.42, 0); g.add(tt);
+      const house = box(2.5, 0.95, 1.6, matBody); house.position.set(0.4, 1.98, 0); g.add(house);
+      const cw = box(0.7, 0.9, 1.6, matTeal); cw.position.set(-1.1, 1.95, 0); g.add(cw);
+      const cab = box(1.1, 1.15, 0.9, matBody); cab.position.set(-1.95, 1.85, 0.55); g.add(cab);
+      const win = box(0.05, 0.55, 0.75, matGlass); win.position.set(-2.51, 2.05, 0.55); g.add(win);
+      const pivot = new THREE.Group(); pivot.position.set(1.2, 2.45, 0); g.add(pivot);
+      const boom = box(5.6, 0.42, 0.45, matBody); boom.position.set(2.8, 0, 0); pivot.add(boom);
+      const boom2 = box(5.62, 0.1, 0.47, matTeal); boom2.position.set(2.8, -0.16, 0); pivot.add(boom2);
+      const tip = new THREE.Group(); tip.position.set(5.55, 0, 0); pivot.add(tip);
+      const rope = cyl(0.02, 0.02, 2.0, matDark, 6); rope.position.set(0, -1.0, 0); tip.add(rope);
+      const hook = box(0.32, 0.36, 0.32, M(0xd9a43a)); hook.position.set(0, -2.1, 0); tip.add(hook);
+      beacon.set(-1.95, 2.55, 0.55); exhaust.set(-0.6, 2.75, -0.7); ledY = 4.4;
+      anim = (time, run) => { const a = 0.42 + (run ? Math.sin(time * 0.7) * 0.18 : 0); pivot.rotation.z = a; tip.rotation.z = -a; tt.rotation.y = 0; };
+    }
+    const bm = new THREE.MeshBasicMaterial({ color: 0x2c9a57 });
+    const bmesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), bm); bmesh.position.copy(beacon); g.add(bmesh);
+    const blight = new THREE.PointLight(0x2c9a57, 0, 6); blight.position.copy(beacon).add(new THREE.Vector3(0, 0.3, 0)); g.add(blight);
+    return { g, wheels, anim, beacon: bmesh, blight, exhaust, ledY, kind };
+  }
+  const stands = new THREE.Group(); scene.add(stands);
+  for (const x of [-1.8, 1.8]) for (const z of [-0.9, 0.9]) { const s = box(0.5, 1, 0.5, M(0xd9a43a)); s.position.set(x, 0.5, z); stands.add(s); }
+  stands.visible = false;
+  function setMachine(kind) {
+    if (MC && MC.kind === kind) return;
+    if (MC) { machineRoot.remove(MC.g); MC.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    MC = buildMachine(kind); machineRoot.add(MC.g); MC.g.add(led.sprite); led.sprite.position.set(0, MC.ledY, 0); MC.g.add(bang.sprite); bang.sprite.position.set(0, MC.ledY + 1.4, 0);
+  }
+
+  /* ---------------- bảng LED & nhãn ---------------- */
+  const fontD = '"Barlow Condensed", "Arial Narrow", Arial, sans-serif', fontM = '"Roboto Mono", Consolas, monospace';
+  function mkCanvasSprite(w, h, sx, sy) { const c = document.createElement('canvas'); c.width = w; c.height = h; const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); s.scale.set(sx, sy, 1); s.renderOrder = 10; return { c, ctx: c.getContext('2d'), tex, sprite: s }; }
+  const led = mkCanvasSprite(640, 200, 4.0, 1.25); let ledKey = '';
+  function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  const HEX = { TRANG: '#e8eef0', VANG: '#f2b81c', DO: '#ff5a4a', DA_BD: '#3fd17c' };
+  function drawLed(l1, l2, mau) {
+    const k = l1 + '|' + l2 + '|' + mau; if (k === ledKey) return; ledKey = k;
+    const { ctx, c } = led; ctx.clearRect(0, 0, c.width, c.height);
+    rr(ctx, 6, 6, c.width - 12, c.height - 12, 22); ctx.fillStyle = 'rgba(8,18,22,0.92)'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = HEX[mau] || '#3db3c2'; ctx.stroke();
+    ctx.fillStyle = '#e8f6f8'; ctx.font = `500 62px ${fontM}`; ctx.textBaseline = 'middle'; ctx.fillText(l1, 34, 70);
+    ctx.fillStyle = HEX[mau] || '#e8eef0'; ctx.font = `700 54px ${fontD}`; ctx.fillText(l2, 34, 145); led.tex.needsUpdate = true;
+  }
+  const bang = mkCanvasSprite(128, 128, 1.1, 1.1);
+  (() => { const { ctx } = bang; ctx.beginPath(); ctx.arc(64, 64, 56, 0, Math.PI * 2); ctx.fillStyle = '#e06a1b'; ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = `700 92px ${fontD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 64, 70); bang.tex.needsUpdate = true; bang.sprite.visible = false; })();
+  const labelCache = new Map();
+  function label(text, color) {
+    const key = text + color; let L = labelCache.get(key);
+    if (!L) { L = mkCanvasSprite(400, 80, 2.65, 0.53); const { ctx } = L; ctx.font = `700 44px ${fontD}`; const tw = Math.min(388, ctx.measureText(text).width + 36), x0 = (400 - tw) / 2; rr(ctx, x0, 4, tw, 72, 14); ctx.fillStyle = 'rgba(10,22,27,0.82)'; ctx.fill(); ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 200, 42, 372); L.tex.needsUpdate = true; labelCache.set(key, L); }
+    const s = new THREE.Sprite(L.sprite.material); s.scale.copy(L.sprite.scale); s.renderOrder = 9; return s;
+  }
+
+  /* ---------------- vòng chu kỳ ---------------- */
+  const RAD = 7.0, A0 = -Math.PI / 2, LV = 0.55;
+  const lvY = ck => 0.06 + (ck - 1) * LV;
+  const angOf = f => A0 - f * Math.PI * 2;
+  const posOf = (f, y, r = RAD) => { const a = angOf(f); return new THREE.Vector3(r * Math.cos(a), y, -r * Math.sin(a)); };
+  const fracOf = (h, ck) => Math.min(1, Math.max(0, (h - (ck - 1) * R.C) / R.C));
+  function arc(f1, f2, y, color, op, w = 0.14, segs = 96, rc = RAD) {
+    const len = Math.max(0.0001, (f2 - f1) * Math.PI * 2);
+    const m = new THREE.Mesh(new THREE.RingGeometry(rc - w, rc + w, Math.max(4, Math.round(segs * (f2 - f1))), 1, -A0 + f1 * Math.PI * 2, len),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = Math.PI / 2; m.position.y = y; return m;
+  }
+  const ringBase = new THREE.Group(), ringDyn = new THREE.Group(); scene.add(ringBase, ringDyn);
+  let baseKey = '';
+  const prog = []; // arc tiến độ theo chu kỳ (drawRange)
+  const sharedPost = new THREE.CylinderGeometry(0.09, 0.09, 1.3, 10), sharedCap = new THREE.SphereGeometry(0.2, 14, 10), sharedDisc = new THREE.CylinderGeometry(0.34, 0.34, 0.07, 20);
+  const capHex = i => (COL.caps && COL.caps[i % COL.caps.length]) || '#2b7bb9';
+  const matCache = new Map(); const matFor = hex => { let m = matCache.get(hex); if (!m) { m = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, emissive: hex, emissiveIntensity: 0.25 }); m.userData.shared = true; matCache.set(hex, m); } return m; };
+  function disposeGroup(g) { while (g.children.length) { const o = g.children.pop(); o.traverse(x => { if (x.geometry && x.geometry !== sharedPost && x.geometry !== sharedCap && x.geometry !== sharedDisc) x.geometry.dispose(); if (x.material && !x.isSprite && !x.material.userData.shared) x.material.dispose(); }); } }
+  function buildBase(seg, maxCk) {
+    const key = seg ? seg.doan + '|' + maxCk + '|' + R.dm.map(x => x.gio_dm).join(',') + '|' + COL.key + '|' + U() : 'none'; if (key === baseKey) return; baseKey = key;
+    disposeGroup(ringBase); prog.length = 0; if (!seg) return;
+    for (let ck = 1; ck <= maxCk; ck++) {
+      const y = lvY(ck);
+      const tor = new THREE.Mesh(new THREE.TorusGeometry(RAD, 0.045, 8, 160), new THREE.MeshStandardMaterial({ color: COL.ring, roughness: 0.5, metalness: 0.3 }));
+      tor.rotation.x = Math.PI / 2; tor.position.y = y; ringBase.add(tor);
+      // dải màu theo cấp: mỗi khoảng [mốc cấp trước, mốc cấp này] một màu
+      R.dm.forEach((lv, i) => { const f0 = (i ? R.dm[i - 1].gio_dm : 0) / R.C, f1 = lv.gio_dm / R.C; ringBase.add(arc(f0 + 0.002, f1 - 0.002, y - 0.01, capHex(i), ck === maxCk ? 0.75 : 0.4, 0.22, 96, RAD + 0.55)); });
+      for (let i = 0; i < 24; i++) { const h = i * R.C / 24; const tk = box(0.05, 0.05, i % 4 === 0 ? 0.5 : 0.28, matSteel); const p = posOf(h / R.C, y); tk.position.copy(p); tk.lookAt(0, y, 0); ringBase.add(tk); }
+      const pm = new THREE.Mesh(new THREE.RingGeometry(RAD - 0.16, RAD + 0.16, 360, 1, -A0, Math.PI * 2), new THREE.MeshBasicMaterial({ color: COL.accent, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+      pm.rotation.x = Math.PI / 2; pm.position.y = y + 0.01; pm.geometry.setDrawRange(0, 0); ringBase.add(pm); prog[ck] = pm;
+      const lb = label('Chu kỳ ' + ck, '#9fdbe3'); lb.position.copy(posOf(0, y + 0.45, RAD + 1.2)); ringBase.add(lb);
+    }
+    const z = label('0 ' + U(), '#e8eef0'); z.position.copy(posOf(0, 0.35, RAD - 1.6)); ringBase.add(z);
+  }
+  const posts = new Map(); // id -> {group, pos}
+  const shake = new Map();
+  function buildDyn(seg, rows, X) {
+    disposeGroup(ringDyn); posts.clear(); if (!seg) return;
+    const show = R.lines.filter(l => l.doan === seg.doan && !l.khai_bao && l.ngay_sinh <= X);
+    for (const l of show) {
+      const r = rows.find(x => x.line.id === l.id);
+      const closed = l.trang_thai !== 0 && l.ngay_dong <= X;
+      if (closed && l.trang_thai === 9) continue;
+      const mau = closed ? (l.trang_thai === 2 ? 'BT' : 'DA_BD') : r ? r.mau : 'TRANG';
+      const hex = { TRANG: COL.trang, VANG: COL.vang, DO: COL.do, DA_BD: COL.xanh, BT: COL.xanhNhat }[mau];
+      const f = fracOf(l.gio_den_han, l.chu_ky), y = lvY(l.chu_ky);
+      const g = new THREE.Group(); const p = posOf(f, y); g.position.copy(p);
+      const disc = new THREE.Mesh(sharedDisc, matFor(capHex(l.stt - 1))); disc.position.y = 0.04; g.add(disc);
+      const post = new THREE.Mesh(sharedPost, matFor(hex)); post.position.y = 0.65; post.castShadow = true; g.add(post);
+      const cap = new THREE.Mesh(sharedCap, matFor(hex)); cap.position.y = 1.35; g.add(cap);
+      const lb = label(`Cấp ${l.ma_cap} · ${nf.format(l.gio_den_han)} ${U()}`, '#' + new THREE.Color(hex).getHexString()); lb.position.y = 1.95; g.add(lb);
+      g.userData.id = l.id; ringDyn.add(g); posts.set(l.id, { g, pos: p.clone().add(new THREE.Vector3(0, 1.3, 0)) });
+      if (!closed && l.gio_cb > 0) { const f1 = fracOf(l.gio_den_han - l.gio_cb, l.chu_ky); if (f > f1) ringDyn.add(arc(f1, f, y + 0.02, COL.vang, 0.45, 0.24)); }
+    }
+  }
+  // kim chỉ giờ
+  const needle = new THREE.Group(); scene.add(needle);
+  const nBar = new THREE.Mesh(new THREE.BoxGeometry(RAD, 0.05, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); nBar.position.x = RAD / 2; needle.add(nBar);
+  const nBall = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); nBall.position.x = RAD; needle.add(nBall);
+  const nGlow = new THREE.PointLight(0x9fe6ee, 0.9, 5); nGlow.position.x = RAD; needle.add(nGlow);
+  let needleAnim = null, ghost = null, lift = null;
+
+  /* ---------------- hiệu ứng ---------------- */
+  const fx = [];
+  const wrenchMat = new THREE.MeshStandardMaterial({ color: 0xcfd6d8, metalness: 0.8, roughness: 0.3, emissive: 0x2c9a57, emissiveIntensity: 0.3 });
+  function fxWrench(p) {
+    if (reduced) return;
+    const g = new THREE.Group(); g.position.copy(p).add(new THREE.Vector3(0, 1.4, 0));
+    const h = box(0.16, 1.1, 0.08, wrenchMat); g.add(h);
+    const head = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.07, 8, 16, Math.PI * 1.5), wrenchMat); head.position.y = 0.62; g.add(head);
+    const parts = []; const pm = new THREE.MeshBasicMaterial({ color: COL.xanh, transparent: true });
+    for (let i = 0; i < 26; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), pm); const a = Math.random() * Math.PI * 2, e = Math.random() * 1.2; s.userData.v = new THREE.Vector3(Math.cos(a) * 2, 1.5 + e * 2, Math.sin(a) * 2); g.add(s); parts.push(s); }
+    scene.add(g); fx.push({ g, t: 0, dur: 2.2, upd(tt, dt) { g.rotation.y += dt * 5; h.rotation.z = Math.sin(tt * 9) * 0.4; parts.forEach(s => { s.position.addScaledVector(s.userData.v, dt); s.userData.v.y -= 4 * dt; }); pm.opacity = Math.max(0, 1 - tt / 2.2); g.scale.setScalar(Math.min(1, tt * 4)); } });
+  }
+  const smokeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(200,205,205,0.7)'); gr.addColorStop(1, 'rgba(200,205,205,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const smoke = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, opacity: 0 })); s.userData.life = 0; scene.add(s); smoke.push(s); }
+  let smokeT = 0;
+
+  /* ---------------- camera ---------------- */
+  const cam = { th: 0.72, ph: 1.08, r: 24, tgt: new THREE.Vector3(0, 1.4, 0), fly: null };
+  function placeCam() { const sp = Math.sin(cam.ph); camera.position.set(cam.tgt.x + cam.r * sp * Math.sin(cam.th), cam.tgt.y + cam.r * Math.cos(cam.ph), cam.tgt.z + cam.r * sp * Math.cos(cam.th)); camera.lookAt(cam.tgt); }
+  const ptrs = new Map(); let pinch0 = 0;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); cam.fly = null; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+  cv.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return; const pr = ptrs.get(e.pointerId);
+    if (ptrs.size === 1) { cam.th -= (e.clientX - pr.x) * 0.006; cam.ph = Math.min(1.45, Math.max(0.25, cam.ph - (e.clientY - pr.y) * 0.005)); }
+    pr.x = e.clientX; pr.y = e.clientY;
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) cam.r = Math.min(46, Math.max(8, cam.r * pinch0 / d)); pinch0 = d; }
+  });
+  const up = e => { ptrs.delete(e.pointerId); pinch0 = 0; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', e => { e.preventDefault(); cam.fly = null; cam.r = Math.min(46, Math.max(8, cam.r * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: false });
+  function flyTo(p) { cam.fly = { from: cam.tgt.clone(), to: p.clone(), r0: cam.r, r1: 13, t: 0 }; }
+
+  /* ---------------- theme ---------------- */
+  const COL = {};
+  function isDark() { const d = document.documentElement.dataset.theme; return d ? d === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement), g = k => cs.getPropertyValue(k).trim();
+    const dark = isDark();
+    Object.assign(COL, { trang: '#e8eef0', vang: g('--st-vang') || '#e3a10b', do: g('--st-do') || '#c8372c', xanh: g('--st-xanh') || '#2c9a57', xanhNhat: '#8fd3a8', xam: g('--st-xam') || '#8b979c', accent: g('--accent') || '#0d6876', ring: dark ? '#4d6670' : '#5b6c72', key: dark ? 'd' : 'l', caps: [1, 2, 3, 4, 5, 6].map(i => g('--cap' + i) || '#2b7bb9') });
+    const sky = new THREE.Color(g('--scene-sky') || '#c9d8dd'); scene.background = sky; scene.fog = new THREE.Fog(sky, 34, 80);
+    hemi.intensity = dark ? 0.42 : 0.82; sun.intensity = dark ? 0.35 : 1.05; sun.color.set(dark ? 0x9fb8d6 : 0xffd2a1); fill.intensity = dark ? 0.9 : 0;
+    nBar.material.color.set(COL.accent); nGlow.color.set(COL.accent);
+    baseKey = ''; if (R) refresh(true);
+  }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readTheme);
+  new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* ---------------- sự kiện theo thời gian ---------------- */
+  const thOf = cap => (P.dinh_muc.find(r => r.ma_cap === cap) || {}).gio_th || sopGioTH(0, P.thiet_bi.dvt);
+  const raTu = (vao, cap) => addWork(vao, Math.max(0, Math.ceil(thOf(cap) / 8) - 1));   // 8 giờ làm việc/ngày, trừ Chủ nhật
+  const inXuong = X => (P.phieu || []).find(p => p.ngay_vao && p.ngay_ra && dnum(p.ngay_vao) <= X && X <= dnum(p.ngay_ra));
+  function buildEvents() {
+    EV = []; const tb = P.thiet_bi.ma_tb, u = U();
+    for (const l of R.lines) {
+      if (l.khai_bao) continue;
+      if (l.ngay_den_han != null && l.ngay_den_han > l.ngay_goc) EV.push({ d: l.ngay_den_han, k: 'due', l, txt: `${tb} đến hạn BD cấp ${l.ma_cap} – ${nf.format(l.gio_den_han)} ${u}`, cls: 'do' });
+      const end = l.ngay_dong != null ? l.ngay_dong - 1 : t1;
+      for (let x = Math.max(l.ngay_sinh, l.ngay_goc + 1); x <= end; x++) { const h = R.H(l.ngay_goc, l.gio_goc, x), c = l.gio_den_han - h; if (c <= 0) break; if (c <= l.gio_cb) { EV.push({ d: x, k: 'warn', l, txt: `Sắp đến hạn cấp ${l.ma_cap} – còn ${nf.format(c)} ${u}`, cls: 'vang' }); break; } }
+      if (l.trang_thai === 1) EV.push({ d: l.ngay_dong, k: 'bd', l, txt: `Nghiệm thu BD cấp ${l.ma_cap} – ${l.so_ct} – ${nf.format(l.gio_luc_bd)} ${u}`, cls: 'xanh' });
+      if (l.trang_thai === 2) EV.push({ d: l.ngay_dong, k: 'bt', l, txt: `Cấp ${l.ma_cap} đóng do bao trùm (${l.so_ct})`, cls: 'xanh' });
+    }
+    for (const s of R.segs) if (s.loai === 3) EV.push({ d: s.ngay_goc, k: 'reset', s, txt: `Sửa chữa lớn ${s.ref} – reset về 0 ${u}`, cls: 'xam' });
+    for (const g of R.log) if (g.ma_loi === 'BD_NGOAI') EV.push({ d: g.ngay, k: 'ngoai', g, txt: g.noi_dung, cls: 'cam' });
+    for (const p of P.phieu || []) if (p.ngay_vao) EV.push({ d: dnum(p.ngay_vao), k: 'vao', p, txt: p.loai === 'BD' ? `Vào xưởng BD cấp ${p.ma_cap} – ${p.so_ct}, dự kiến ra ${p.ngay_ra ? dvn(dnum(p.ngay_ra)) : '?'}` : `Vào xưởng sửa chữa lớn – ${p.so_ct}`, cls: 'xam' });
+    for (let d = t0 + 1; d <= t1; d++) if (new Date(d * 864e5).getUTCDate() === 26) EV.push({ d, k: 'kh', silent: true });   // SOP: ĐVSD báo cáo 26–27, PKT lập KH tháng sau
+    const ord = { reset: 0, vao: 1, bd: 2, bt: 3, ngoai: 4, kh: 5, warn: 6, due: 7 };
+    EV.sort((a, b) => a.d - b.d || ord[a.k] - ord[b.k]);
+    const mk = $('marks'), span = Math.max(1, t1 - t0), colr = { due: 'var(--st-do)', bd: 'var(--st-xanh)', bt: 'var(--st-xanh)', reset: 'var(--st-xam)', ngoai: 'var(--st-cam)', warn: 'var(--st-vang)', vao: 'var(--accent)' };
+    mk.innerHTML = EV.filter(e => e.d >= t0 && e.d <= t1 && e.k !== 'kh').map(e => `<i class="mk" title="${esc(dvn(e.d) + ' – ' + e.txt)}" style="left:${((e.d - t0) / span * 100).toFixed(2)}%;background:${colr[e.k]}"></i>`).join('');
+  }
+  function toast(txt, cls, d) {
+    const el = document.createElement('div'); el.className = 'toast ' + cls; el.innerHTML = `<b>${esc(dvn(d))}</b> · ${esc(txt)}`;
+    const bx = $('toasts'); bx.prepend(el); while (bx.children.length > 4) bx.lastChild.remove();
+    setTimeout(() => el.classList.add('out'), 3600); setTimeout(() => el.remove(), 4200);
+  }
+  let bangUntil = 0, flashUntil = 0;
+  function fire(e, now) {
+    if (!e.silent) toast(e.txt, e.cls, e.d);
+    if (e.k === 'due') { shake.set(e.l.id, now + 1.3); flashUntil = now + 1.5; }
+    if (e.k === 'bd' || e.k === 'bt') { const p = posts.get(e.l.id); fxWrench(p ? p.pos.clone().sub(new THREE.Vector3(0, 1.3, 0)) : posOf(fracOf(e.l.gio_den_han, e.l.chu_ky), lvY(e.l.chu_ky))); }
+    if (e.k === 'reset') {
+      needleAnim = { from: needle.rotation.y, t: 0, dur: reduced ? 0.01 : 1.5, y0: needle.position.y };
+      if (!reduced) { ghost = ringBase.clone(true); ghost.traverse(o => { if (o.isSprite) o.visible = false; else if (o.material) { o.material = o.material.clone(); o.material.transparent = true; } }); scene.add(ghost); ghost.userData.t = 0; }
+    }
+    if (e.k === 'ngoai') bangUntil = now + 3.5;
+  }
+
+  /* ---------------- dừng hỏi NSD lập phiếu bảo dưỡng ---------------- */
+  const askOn = { kh: true, warn: true, due: true }, asked = new Set();
+  let askCtx = null;
+  const lkey = l => `${l.doan}|${l.chu_ky}|${l.ma_cap}`;
+  const daCoPhieu = l => l.trang_thai === 1 || l.trang_thai === 2;
+  function checkAsk(e) {
+    if (e.k === 'warn' || e.k === 'due') {
+      if (!askOn[e.k] || daCoPhieu(e.l) || (e.l.trang_thai === 9 && e.l.ngay_dong <= e.d)) return false;
+      const k = lkey(e.l) + '|' + e.k; if (asked.has(k)) return false;
+      asked.add(k); openAsk(e.k, e.l, e.d); return true;
+    }
+    if (e.k === 'kh' && askOn.kh) {
+      const seg = segmentAt(R, e.d); if (!seg) return false;
+      const dt = new Date(e.d * 864e5), endNext = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 2, 0) / 864e5);
+      const r = baoCao(R, e.d).filter(x => x.line.doan === seg.doan && !daCoPhieu(x.line))
+        .find(x => x.mau === 'DO' || x.mau === 'VANG' || (x.duBao && x.duBao <= endNext));
+      if (!r) return false;
+      const k = lkey(r.line) + '|kh'; if (asked.has(k)) return false;
+      asked.add(k); openAsk('kh', r.line, e.d, r.duBao); return true;
+    }
+    return false;
+  }
+  function lanTruoc(l, X) {
+    const b = R.lines.filter(x => x.doan === l.doan && x.trang_thai === 1 && x.ngay_dong <= X && x.id < l.id).pop();
+    return b ? { gio: b.gio_luc_bd, ngay: b.ngay_dong, cap: b.ma_cap, kb: b.khai_bao } : { gio: l.gio_goc, ngay: l.ngay_goc, cap: l.loai_goc === 3 ? 'SC lớn' : '—', kb: true };
+  }
+  const iso = n => dstr(n);
+  function openAsk(kind, l, X, duBao) {
+    setPlay(false); t = X + 0.5; lastX = null; refresh(true);
+    const u = U(), H = R.H(l.ngay_goc, l.gio_goc, X), con = l.gio_den_han - H, tr = lanTruoc(l, X);
+    if (duBao === undefined) { const r = baoCao(R, X).find(x => x.line.id === l.id); duBao = r ? r.duBao : null; }
+    const dtt = new Date(X * 864e5), thang = `${String(dtt.getUTCMonth() + 2 > 12 ? 1 : dtt.getUTCMonth() + 2).padStart(2, '0')}/${dtt.getUTCMonth() + 2 > 12 ? dtt.getUTCFullYear() + 1 : dtt.getUTCFullYear()}`;
+    const head = $('askHead'), pill = $('askPill');
+    head.classList.toggle('do', kind === 'due' || con <= 0);
+    pill.className = 'pill ' + (con <= 0 ? 'p-DO' : con <= l.gio_cb ? 'p-VANG' : 'p-TRANG');
+    pill.textContent = kind === 'kh' ? 'Kỳ lập kế hoạch tháng – ngày 26' : con <= 0 ? 'Quá hạn' : 'Sắp đến hạn';
+    $('askTitle').textContent = kind === 'kh' ? `Lập kế hoạch bảo dưỡng tháng ${thang}?` : kind === 'due' ? `Đã quá hạn cấp ${l.ma_cap} – lập phiếu bảo dưỡng?` : `Sắp đến hạn cấp ${l.ma_cap} – lập phiếu bảo dưỡng?`;
+    const row = (a, b) => `<dt>${a}</dt><dd>${b}</dd>`;
+    $('askInfo').innerHTML = row('Thiết bị', esc(`${P.thiet_bi.ma_tb} · ${P.thiet_bi.ten_tb} · ${P.thiet_bi.bien_so || ''}`)) +
+      row('Cấp BDKT', `${esc(l.ma_cap)} (chu kỳ ${l.chu_ky})`) +
+      row(`${UL()} lần BD trước`, `${nf.format(tr.gio)} ${u} · ${tr.kb ? 'khai báo' : 'cấp ' + esc(tr.cap)} ${dvn(tr.ngay)}`) +
+      row(`${UL()} đến lúc lập KH`, `${nf1.format(H)} ${u} · ngày ${dvn(X)}`) +
+      row(`${UL()} đã hoạt động`, `${nf1.format(H - tr.gio)} ${u}`) +
+      row('Mốc đến hạn', `${nf.format(l.gio_den_han)} ${u}`) +
+      row(con > 0 ? 'Còn lại' : 'Quá hạn', `${nf.format(Math.abs(con))} ${u}`) +
+      row('Dự báo đến hạn', l.ngay_den_han && l.ngay_den_han <= X ? dvn(l.ngay_den_han) + ' (đã đến)' : duBao ? dvn(duBao) : '—');
+    $('aCap').innerHTML = P.dinh_muc.map(r => `<option value="${esc(r.ma_cap)}"${r.ma_cap === l.ma_cap ? ' selected' : ''}>Cấp ${esc(r.ma_cap)} – ${r.gio_th} giờ LV</option>`).join('');
+    let n = 1; const pre = 'BD' + iso(X).slice(2, 4) + iso(X).slice(5, 7) + '-'; while ((P.phieu || []).some(p => p.so_ct === pre + String(n).padStart(2, '0'))) n++;
+    $('aSo').value = pre + String(n).padStart(2, '0');
+    $('aNgayCt').value = iso(X);
+    let vao = addWork(X, 5);                                    // dự toán 4 ngày LV + xác nhận/duyệt 1 ngày
+    if (kind === 'kh' && duBao) vao = Math.max(vao, nextWork(duBao - 1));
+    $('aNgayVao').value = iso(Math.min(vao, t1)); $('aNgayRa').value = iso(Math.min(raTu(Math.min(vao, t1), l.ma_cap), t1));
+    $('aNgayRa').dataset.auto = '1';
+    askCtx = { kind, l, X };
+    updAsk(); $('askErr').textContent = '';
+    if (!$('askDlg').open) $('askDlg').showModal();
+  }
+  function updAsk() {
+    if (!askCtx) return; const cap = $('aCap').value, th = thOf(cap), u = U();
+    const ct = $('aNgayCt').value, vao = $('aNgayVao').value;
+    if ($('aNgayRa').dataset.auto === '1' && isDate(vao)) $('aNgayRa').value = iso(Math.min(raTu(dnum(vao), cap), t1));
+    $('aTH').value = `${th} giờ làm việc (~${Math.ceil(th / 8)} ngày)`;
+    const ra = $('aNgayRa').value, l = askCtx.l;
+    const li = []; const D = s => isDate(s) ? `<b>${dvn(dnum(s))}</b>` : '<b>?</b>';
+    if (isDate(ct)) { const c = dnum(ct); li.push(`Lập phiếu / kế hoạch: ${D(ct)}`); li.push(`XNSCCK khảo sát, lập dự toán (4 ngày LV): đến ${D(iso(addWork(c, 4)))}`); li.push(`PKT, ĐVSD xác nhận – TGĐ duyệt (1 ngày LV): ${D(iso(addWork(c, 5)))}`); }
+    li.push(`Vào xưởng thực hiện BD: ${D(vao)} – SOP ${th} giờ làm việc`);
+    li.push(`Nghiệm thu kỹ thuật, ra xưởng: ${D(ra)}`);
+    if (isDate(vao) && l.ngay_goc < dnum(vao)) {
+      const Hv = R.H(l.ngay_goc, l.gio_goc, dnum(vao) - 1), c = l.gio_den_han - Hv;
+      li.push(c >= 0 ? `Lúc vào xưởng còn khoảng ${nf.format(c)} ${u} trước mốc.` : `Lúc vào xưởng đã quá mốc khoảng ${nf.format(-c)} ${u}.`);
+    }
+    $('aSop').innerHTML = li.map(x => `<li>${x}</li>`).join('');
+  }
+  ['aCap', 'aNgayCt', 'aNgayVao'].forEach(id => $(id).addEventListener('input', updAsk));
+  $('aNgayRa').addEventListener('input', () => { $('aNgayRa').dataset.auto = '0'; updAsk(); });
+  function closeAsk(resume) { const d = $('askDlg'); if (d.open) d.close(); askCtx = null; if (resume && Math.floor(t) < t1) setPlay(true); }
+  $('aNo').onclick = () => { const k = askCtx; closeAsk(true); if (k) toast(`Chưa lập phiếu cấp ${k.l.ma_cap} – tiếp tục theo dõi`, 'vang', k.X); };
+  $('aStop').onclick = () => closeAsk(false);
+  $('askDlg').addEventListener('cancel', e => { e.preventDefault(); closeAsk(false); });
+  $('aYes').onclick = () => {
+    const so = $('aSo').value.trim(), cap = $('aCap').value, ct = $('aNgayCt').value, vao = $('aNgayVao').value, ra = $('aNgayRa').value, err = [];
+    if (!so) err.push('Nhập số phiếu.'); else if ((P.phieu || []).some(p => p.so_ct === so)) err.push(`Số phiếu ${so} đã có.`);
+    if (!isDate(ct) || !isDate(vao) || !isDate(ra)) err.push('Chọn đủ ngày lập, ngày vào xưởng và ngày ra.');
+    else {
+      if (dnum(ct) < askCtx.X) err.push(`Ngày lập không được trước ngày đang xem (${dvn(askCtx.X)}).`);
+      if (dnum(vao) < dnum(ct)) err.push('Ngày vào xưởng phải từ ngày lập trở đi.');
+      if (dnum(ra) < dnum(vao)) err.push('Ngày ra phải từ ngày vào xưởng trở đi.');
+      if (dnum(ra) > t1) err.push(`Ngày ra vượt quá khoảng demo (${dvn(t1)}). Chọn ngày sớm hơn hoặc kéo dài khoảng demo.`);
+      if ((P.phieu || []).some(p => p.ngay_vao && p.ngay_ra && dnum(p.ngay_vao) <= dnum(ra) && dnum(vao) <= dnum(p.ngay_ra))) err.push('Thiết bị đã có phiếu khác nằm xưởng trong khoảng ngày này.');
+    }
+    if (err.length) { $('askErr').textContent = err.join(' '); return; }
+    const X = Math.floor(t);
+    const ok = edit(p => { p.phieu.push({ so_ct: so, loai: 'BD', ma_cap: cap, ngay_ct: ct, ngay_vao: vao, ngay_ra: ra, nsd: true }); }, `Đã lập phiếu ${so} – BD cấp ${cap}, vào xưởng ${dvn(dnum(vao))}, ra ${dvn(dnum(ra))}.`);
+    if (!ok) { $('askErr').textContent = 'Không áp dụng được phiếu – xem thông báo bên bảng điều khiển.'; return; }
+    toast(`Đã lập phiếu ${so} – BD cấp ${cap}, vào xưởng ${dvn(dnum(vao))}`, 'xanh', X);
+    EV.filter(v => v.d === X && (v.k === 'vao' || v.k === 'bd')).forEach(v => fire(v, clock.getElapsedTime()));
+    closeAsk(true);
+  };
+
+  /* ---------------- dựng lại khi đổi ngày / tham số ---------------- */
+  let rowsX = [], segX = null;
+  function refresh(force) {
+    const X = Math.floor(t);
+    if (!force && X === lastX) return;
+    lastX = X; segX = segmentAt(R, X);
+    rowsX = segX ? baoCao(R, X).filter(r => r.line.doan === segX.doan) : [];
+    const segLines = segX ? R.lines.filter(l => l.doan === segX.doan && l.ngay_sinh <= X) : [];
+    const Hx = segX ? R.H(segX.ngay_goc, segX.gio_goc, X) : 0;
+    const maxCk = Math.max(1, Math.ceil(Hx / R.C), ...segLines.filter(l => !l.khai_bao && !(l.trang_thai === 9 && l.ngay_dong <= X)).map(l => l.chu_ky));
+    buildBase(segX, maxCk); buildDyn(segX, rowsX, X);
+    $('hudDate').textContent = dvn(X);
+    const xu = inXuong(X);
+    $('hudSeg').textContent = !segX ? 'Chưa có mốc khai báo tại ngày này'
+      : xu ? `Đang nằm xưởng XNSCCK · ${xu.so_ct} ${xu.loai === 'BD' ? 'BD cấp ' + xu.ma_cap : 'sửa chữa lớn'} · ra ${dvn(dnum(xu.ngay_ra))}`
+        : `Đoạn ${segX.doan} · gốc ${segX.loai === 3 ? 'SC lớn ' + segX.ref : 'mốc khai báo'} ${dvn(segX.ngay_goc)}`;
+    $('rng').value = String(X - t0);
+    renderTable();
+  }
+
+  /* ---------------- bảng dữ liệu ---------------- */
+  const pillMau = m => `<span class="pill p-${m}">${MAU_TXT[m]}</span>`;
+  const pillTT = l => l.khai_bao ? '<span class="pill p-kb">Khai báo</span>' : `<span class="pill p-t${l.trang_thai}">${TT_TXT[l.trang_thai]}</span>`;
+  const phieuOf = so => (P.phieu || []).find(p => p.so_ct === so);
+  /* ---------------- bảng theo dõi chu kỳ BD (phân nhóm màu theo cấp) ---------------- */
+  const capChip = (i, txt) => `<span class="capchip" style="--c:${capHex(i)}"><i></i>${txt}</span>`;
+  function renderCK(X) {
+    if (!R || !segX) return '<div class="empty">Chưa có mốc khai báo tại ngày này.</div>';
+    const u = U(), dm = R.dm;
+    let h = `<div class="caplegend">${dm.map((r, i) => capChip(i, `Cấp ${esc(r.ma_cap)} · ${nf.format(r.gio_dm)} ${u}`)).join('')}<span>Thanh tiến độ: phần đậm là số ${UL().toLowerCase()} đã chạy, sọc vàng là vùng báo trước, vạch đen là hiện tại.</span></div><div class="ckwrap">`;
+    h += segCycles(segX, X, true);
+    const old = R.segs.filter(s => s.ngay_goc < segX.ngay_goc).reverse();
+    if (old.length) h += `<details class="old"><summary>Xem ${old.length} đoạn trước (trước lần reset)</summary><div class="ckwrap">${old.map(s => segCycles(s, Math.min(X, s.ngay_ket), false)).join('')}</div></details>`;
+    return h + '</div>';
+  }
+  function segCycles(seg, X, isCur) {
+    const C = R.C, lines = R.lines.filter(l => l.doan === seg.doan && l.ngay_sinh <= X);
+    const Hx = R.H(seg.ngay_goc, seg.gio_goc, X);
+    const ckNow = Math.max(1, Math.ceil(Hx / C - 1e-9));
+    const cks = new Set([ckNow, ...lines.map(l => l.chu_ky)]);
+    const list = [...cks].sort((a, b) => b - a);
+    const note = isCur ? '' : `<div class="small" style="padding:8px 12px">Đoạn ${seg.doan}: gốc ${seg.loai === 3 ? 'sửa chữa lớn ' + esc(seg.ref) : 'mốc khai báo'} ${dvn(seg.ngay_goc)} → kết thúc ${dvn(seg.ngay_ket)} do reset.</div>`;
+    return note + list.map(ck => cycleCard(seg, ck, Hx, X, isCur && ck === ckNow, lines)).join('');
+  }
+  function cycleCard(seg, ck, Hx, X, isCurCk, lines) {
+    const C = R.C, dm = R.dm, base = (ck - 1) * C, u = U(), rep = baoCao(R, X);
+    const ran = Math.min(C, Math.max(0, Hx - base));
+    let done = 0;
+    const rows = dm.map((lv, i) => {
+      const l = lines.find(x => x.chu_ky === ck && x.ma_cap === lv.ma_cap);
+      const from = base + (i ? dm[i - 1].gio_dm : 0), moc = l ? l.gio_den_han : base + lv.gio_dm;
+      const r = l && rep.find(x => x.line.id === l.id);
+      const closed = l && l.trang_thai !== 0 && l.ngay_dong <= X;
+      let st, cls = 'lv';
+      if (!l) { st = '<span class="pill p-fut">Chưa tới</span>'; cls += ' future'; }
+      else if (l.khai_bao) { st = '<span class="pill p-kb">Đã làm (khai báo)</span>'; done++; }
+      else if (closed) { st = pillTT(l); if (l.trang_thai !== 9) done++; }
+      else { st = r ? pillMau(r.mau) : ''; if (l.trang_thai === 1 || l.trang_thai === 2) st += ' <span class="pill p-plan">Đã lập phiếu</span>'; }
+      const ph = l && l.so_ct && l.so_ct !== 'KHAI_BAO' ? phieuOf(l.so_ct) : null;
+      const isNow = isCurCk && l && !closed && !l.khai_bao && r && (r.mau === 'DO' || r.mau === 'VANG');
+      const dh = l && l.ngay_den_han != null && l.ngay_den_han <= X ? dvn(l.ngay_den_han) : r && r.duBao ? dvn(r.duBao) + ' <span class="small">(dự báo)</span>' : l && !l.khai_bao ? '' : '—';
+      const lech = l && l.gio_luc_bd != null && !l.khai_bao && closed ? l.gio_luc_bd - l.gio_den_han : null;
+      return `<tr class="${cls}${isNow ? ' isnow' : ''}" style="--c:${capHex(i)}"${l ? ` data-id="${l.id}"` : ''}>
+        <td>${capChip(i, 'Cấp ' + esc(lv.ma_cap))}</td>
+        <td class="num">${nf.format(from)} → ${nf.format(moc)}</td>
+        <td class="num">${nf.format(Math.max(from, moc - lv.gio_cb))}</td>
+        <td>${dh}</td><td>${st}</td>
+        <td>${ph ? esc(ph.so_ct) + (ph.ngay_vao ? ` <span class="small">${dvn(dnum(ph.ngay_vao))} → ${dvn(dnum(ph.ngay_ra))}</span>` : '') : l && l.so_ct && l.so_ct !== 'KHAI_BAO' ? esc(l.so_ct) : ''}</td>
+        <td class="num">${l && l.gio_luc_bd != null && !l.khai_bao && closed ? nf.format(l.gio_luc_bd) : ''}</td>
+        <td>${lech == null ? '' : `<span class="lech ${lech > 0 ? 'tre' : 'som'}">${lech > 0 ? 'trễ ' + nf.format(lech) : lech < 0 ? 'sớm ' + nf.format(-lech) : 'đúng mốc'}</span>`}</td></tr>`;
+    }).join('');
+    const bar = dm.map((lv, i) => {
+      const a = i ? dm[i - 1].gio_dm : 0, b = lv.gio_dm, w = (b - a) / C * 100;
+      const fill = Math.min(100, Math.max(0, (ran - a) / (b - a) * 100));
+      const l = lines.find(x => x.chu_ky === ck && x.ma_cap === lv.ma_cap);
+      const open = !l || (l.trang_thai === 0 || l.ngay_dong > X) && !l.khai_bao;
+      const ws = Math.max(a, b - lv.gio_cb), wl = (ws - a) / (b - a) * 100;
+      return `<div class="sg" style="--c:${capHex(i)};flex-basis:${w}%" title="Cấp ${esc(lv.ma_cap)}: ${nf.format(base + a)} → ${nf.format(base + b)} ${u}"><b style="width:${fill}%"></b>${open ? `<span class="w" style="left:${wl}%;right:0"></span>` : ''}</div>`;
+    }).join('');
+    const ticks = [0, ...dm.map(x => x.gio_dm)].map((g, i, arr) => `<span style="left:${g / C * 100}%">${nf.format(base + g)}</span>`).join('');
+    const nowMk = isCurCk ? `<i class="now" style="left:${ran / C * 100}%" title="Hiện tại ${nf1.format(Hx)} ${u}"></i>` : '';
+    return `<div class="ck${isCurCk ? ' cur' : ''}${done === dm.length ? ' done' : ''}">
+      <div class="ckhead"><h3>Chu kỳ ${ck}</h3>
+        <div class="ckbar"><div class="bar">${bar}</div>${nowMk}<div class="ticks">${ticks}</div></div>
+        <div class="meta">${nf1.format(ran)} / ${nf.format(C)} ${u}<br>${done}/${dm.length} cấp đã BD</div></div>
+      <div class="tblwrap"><table><thead><tr><th>Cấp</th><th class="num">Khoảng (${u})</th><th class="num">Báo từ</th><th>Ngày đến hạn</th><th>Tình trạng</th><th>Phiếu BD · nằm xưởng</th><th class="num">Lúc BD</th><th>So với mốc</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }
+
+  /* ---------------- hình vẽ quy tắc cảnh báo ---------------- */
+  function renderRules() {
+    const dm = P.dinh_muc, u = U(), C = dm[dm.length - 1].gio_dm, f = n => nf.format(n);
+    const iA = Math.min(1, dm.length - 1), A = dm[iA], B = dm[Math.min(iA + 1, dm.length - 1)], prevA = iA ? dm[iA - 1].gio_dm : 0;
+    const cb = A.gio_cb || 30, th = A.gio_th || 24;
+    const svg = (body, h = 170) => `<svg viewBox="0 0 400 ${h}" role="img" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+    const T = (x, y, s, c = 'rs-t', a = 'start') => `<text x="${x}" y="${y}" class="${c}" text-anchor="${a}">${s}</text>`;
+    const rect = (x, y, w, h, c, extra = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="${c}" ${extra}/>`;
+    const ln = (x1, y1, x2, y2, c = 'rs-ln', extra = '') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${c}" ${extra}/>`;
+    const arrowDef = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="rs-ink"/></marker></defs>`;
+    const cards = [];
+    // 1. Màu cảnh báo
+    { const x0 = 20, x1 = 380, lo = prevA, hi = A.gio_dm + cb * 1.6, X = v => x0 + (v - lo) / (hi - lo) * (x1 - x0), w = X(A.gio_dm - cb), m = X(A.gio_dm), cur = A.gio_dm - cb * 0.45;
+      cards.push(['Màu cảnh báo theo số giờ còn lại', svg(arrowDef +
+        rect(x0, 62, w - x0, 30, 'rs-w', 'rx="4"') + rect(w, 62, m - w, 30, 'rs-v') + rect(m, 62, x1 - m, 30, 'rs-d', 'rx="0"') +
+        T((x0 + w) / 2, 82, 'TRẮNG', 'rs-t rs-b', 'middle') + T((w + m) / 2, 82, 'VÀNG', 'rs-t rs-b rs-dk', 'middle') + T((m + x1) / 2, 82, 'ĐỎ', 'rs-t rs-b rs-on', 'middle') +
+        ln(X(cur), 30, X(cur), 98, 'rs-ln', 'marker-end="url(#ar)" stroke-width="2"') + T(X(cur), 24, `Giờ hiện tại ${f(Math.round(cur))} ${u}`, 'rs-t', 'middle') +
+        ln(w, 98, w, 112, 'rs-ln') + ln(m, 98, m, 112, 'rs-ln') +
+        T(x0, 110, f(lo), 'rs-s') + T(w, 124, `Mốc − báo trước = ${f(A.gio_dm - cb)}`, 'rs-s', 'middle') + T(m, 140, `Mốc cấp ${esc(A.ma_cap)} = ${f(A.gio_dm)} ${u}`, 'rs-s rs-b', 'middle') +
+        `<path d="M${X(cur)} 150 H${m}" class="rs-ln" marker-end="url(#ar)" marker-start="url(#ar)"/>` + T((X(cur) + m) / 2, 164, `Còn lại = ${f(A.gio_dm)} − ${f(Math.round(cur))} = ${f(Math.round(A.gio_dm - cur))} ${u}`, 'rs-s', 'middle'), 170),
+        [`<b>Còn lại = Mốc − Giờ hiện tại</b>, tính lại mỗi ngày từ giờ hoạt động ĐVSD ghi nhận.`, `<b>Trắng</b>: còn lại lớn hơn số báo trước (${f(cb)} ${u}).`, `<b>Vàng</b>: còn lại từ 0 đến ${f(cb)} ${u} – lập phiếu, làm dự toán.`, `<b>Đỏ</b>: còn lại ≤ 0 – quá hạn, hệ thống hiện thêm cấp kế tiếp.`]]); }
+    // 2. Chu kỳ & cấp
+    { const x0 = 20, x1 = 380, X = v => x0 + v / C * (x1 - x0);
+      let b = ''; dm.forEach((r, i) => { const a = i ? dm[i - 1].gio_dm : 0; b += `<rect x="${X(a)}" y="50" width="${X(r.gio_dm) - X(a) - 2}" height="26" style="fill:var(--cap${i % 6 + 1})"/>` + T((X(a) + X(r.gio_dm)) / 2, 67, 'Cấp ' + esc(r.ma_cap), 'rs-t rs-b rs-on', 'middle') + ln(X(r.gio_dm), 76, X(r.gio_dm), 88, 'rs-ln') + T(X(r.gio_dm), 100, f(r.gio_dm), 'rs-s', i === dm.length - 1 ? 'end' : 'middle'); });
+      b += T(x0, 100, '0', 'rs-s') + T(x0, 40, 'Chu kỳ 1', 'rs-t rs-b') + T(x1, 40, `C = ${f(C)} ${u}`, 'rs-s', 'end');
+      b += `<path d="M${x1 - 4} 112 C ${x1 - 4} 150, ${x0 + 4} 150, ${x0 + 4} 116" class="rs-ln" fill="none" stroke-dasharray="4 3" marker-end="url(#ar)"/>` + T(200, 160, `Lặp chu kỳ 2: cấp ${esc(dm[0].ma_cap)} đến hạn ở ${f(C + dm[0].gio_dm)} ${u}`, 'rs-s', 'middle');
+      cards.push(['Một chu kỳ gồm các cấp theo thứ tự', svg(arrowDef + b, 170),
+        [`Mỗi màu là một cấp. Mốc lớn nhất (${f(C)} ${u}) là độ dài chu kỳ.`, `Chỉ cảnh báo <b>cấp kế tiếp</b>; khi giờ chạm mốc, cấp sau mới xuất hiện.`, `Hết cấp cuối thì quay lại cấp đầu: mốc chu kỳ n = (n − 1) × ${f(C)} + mốc cấp.`]]); }
+    // 3. Lập phiếu → nằm xưởng → đóng
+    { const days = th <= 12 ? 2 : th <= 24 ? 3 : 5, xs = [30, 85, 160, 190, 190 + days * 14, 380];
+      const yOf = v => 140 - v * 100; const pts = [[30, yOf(0.15)], [85, yOf(0.5)], [190, yOf(0.86)], [xs[4], yOf(0.86)], [380, yOf(1.2)]];
+      cards.push(['Lập phiếu, nằm xưởng và đóng cảnh báo', svg(arrowDef +
+        rect(xs[2], 20, xs[4] - xs[2], 125, 'rs-xu') + T((xs[2] + xs[4]) / 2, 32, 'Nằm xưởng', 'rs-s', 'middle') + T((xs[2] + xs[4]) / 2, 44, `${th} giờ LV`, 'rs-s', 'middle') +
+        ln(20, yOf(1), 385, yOf(1), 'rs-dd', 'stroke-dasharray="5 4"') + T(385, yOf(1) - 5, `Mốc ${f(A.gio_dm)}`, 'rs-s', 'end') +
+        ln(20, yOf(1 - cb / A.gio_dm * 4), 385, yOf(1 - cb / A.gio_dm * 4), 'rs-vl', 'stroke-dasharray="2 4"') +
+        `<polyline points="${pts.map(p => p.join(',')).join(' ')}" class="rs-curve"/>` +
+        `<circle cx="85" cy="${yOf(0.5)}" r="5" class="rs-v"/>` + T(85, yOf(0.5) + 18, 'Vào vùng vàng', 'rs-s', 'middle') + T(85, yOf(0.5) + 30, 'lập phiếu', 'rs-s', 'middle') +
+        `<circle cx="${xs[2]}" cy="${yOf(0.86)}" r="5" class="rs-a"/>` + T(xs[2] - 4, yOf(0.86) - 10, 'Vào xưởng', 'rs-s', 'end') +
+        `<circle cx="${xs[4]}" cy="${yOf(0.86)}" r="6" class="rs-g"/>` + T(xs[4] + 8, yOf(0.86) + 16, 'Nghiệm thu, ra xưởng', 'rs-s') + T(xs[4] + 8, yOf(0.86) + 28, `→ cấp ${esc(A.ma_cap)} đã BD`, 'rs-s rs-b') +
+        T(30, 160, 'Thời gian →', 'rs-s'), 170),
+        [`Từ lúc lập phiếu: XNSCCK khảo sát, dự toán 4 ngày LV; PKT xác nhận, TGĐ duyệt 1 ngày.`, `Trong những ngày nằm xưởng, giờ hoạt động đứng yên (đoạn ngang).`, `Ngày ra xưởng là ngày đóng cảnh báo; giờ lúc đó ghi vào “Giờ lúc BD”, cấp kế tiếp mở ra.`]]); }
+    // 4. Cố định vs trượt
+    { const late = Math.max(10, Math.round(cb / 3)), done = A.gio_dm + late, gap = B.gio_dm - A.gio_dm, x0 = 20, x1 = 380, lo = A.gio_dm - gap * 0.3, hi = B.gio_dm + late + gap * 0.25, X = v => x0 + (v - lo) / (hi - lo) * (x1 - x0);
+      const row = (y, lab, nxt, cls) => ln(x0, y, x1, y, 'rs-ax') + T(x0, y - 22, lab, 'rs-t rs-b') +
+        `<circle cx="${X(A.gio_dm)}" cy="${y}" r="5" class="rs-w2"/>` + T(X(A.gio_dm), y + 18, `Mốc ${f(A.gio_dm)}`, 'rs-s', 'middle') +
+        `<circle cx="${X(done)}" cy="${y}" r="6" class="rs-g"/>` + T(X(done), y - 10, `BD lúc ${f(done)}`, 'rs-s', 'middle') +
+        `<circle cx="${X(nxt)}" cy="${y}" r="6" class="${cls}"/>` + T(X(nxt), y + 18, `Cấp ${esc(B.ma_cap)}: ${f(nxt)}`, 'rs-s rs-b', 'middle');
+      cards.push(['Mốc cấp kế tiếp: cố định hay trượt', svg(row(55, '1 · Cố định theo chu kỳ', B.gio_dm, 'rs-a') + row(130, '2 · Trượt theo giờ thực tế', done + gap, 'rs-v'), 160),
+        [`Ví dụ BD cấp ${esc(A.ma_cap)} trễ ${f(late)} ${u}, tại ${f(done)} ${u}.`, `<b>Cố định</b>: cấp ${esc(B.ma_cap)} vẫn đến hạn ở ${f(B.gio_dm)} ${u}, không bị dời.`, `<b>Trượt</b>: cấp ${esc(B.ma_cap)} dời thành ${f(done)} + ${f(gap)} = ${f(done + gap)} ${u}.`, `Đổi ở mục “Quy tắc cảnh báo”.`]]); }
+    // 5. Bao trùm
+    { const post = (x, cls, a, b2) => ln(x, 60, x, 112, 'rs-ln', 'stroke-width="3"') + `<circle cx="${x}" cy="56" r="11" class="${cls}"/>` + T(x, 132, a, 'rs-t rs-b', 'middle') + T(x, 147, b2, 'rs-s', 'middle');
+      cards.push(['Làm cấp sau thì đóng luôn cấp trước', svg(arrowDef +
+        T(20, 22, 'Trước', 'rs-s rs-b') + post(60, 'rs-d', 'Cấp ' + esc(A.ma_cap), 'đang đỏ') + post(140, 'rs-w2', 'Cấp ' + esc(B.ma_cap), 'đến hạn') +
+        `<path d="M185 70 H215" class="rs-ln" marker-end="url(#ar)" stroke-width="2"/>` + T(200, 58, 'BD cấp ' + esc(B.ma_cap), 'rs-s', 'middle') +
+        T(230, 22, 'Sau', 'rs-s rs-b') + post(270, 'rs-gl', 'Cấp ' + esc(A.ma_cap), 'đóng bao trùm') + post(350, 'rs-g', 'Cấp ' + esc(B.ma_cap), 'đã BD'), 160),
+        [`Khi bật “bao trùm”, phiếu BD cấp ${esc(B.ma_cap)} đóng cả cấp ${esc(A.ma_cap)} còn treo trước đó.`, `Tắt “bao trùm” thì cấp ${esc(A.ma_cap)} vẫn đỏ cho tới khi có phiếu đúng cấp.`, `Phiếu khác cấp với dòng đang mở được ghi vào Nhật ký (BD ngoài kế hoạch).`]]); }
+    // 6. Reset SC lớn
+    { cards.push(['Sửa chữa lớn: reset giờ về 0', svg(arrowDef +
+        ln(20, 140, 385, 140, 'rs-ax') + `<polyline points="20,135 200,40" class="rs-curve"/>` + `<polyline points="200,40 200,140" class="rs-ln" stroke-dasharray="4 3"/>` + `<polyline points="230,140 385,95" class="rs-curve"/>` +
+        rect(200, 20, 30, 120, 'rs-xu') + T(215, 16, 'Xưởng', 'rs-s', 'middle') +
+        `<circle cx="200" cy="40" r="5" class="rs-d"/>` + T(194, 36, 'Dòng đang mở → hủy', 'rs-s', 'end') +
+        T(236, 128, '0 ' + u, 'rs-t rs-b') + T(300, 90, `Bắt đầu lại cấp ${esc(dm[0].ma_cap)}`, 'rs-s', 'middle') +
+        T(20, 160, 'Lũy kế đời máy vẫn cộng tiếp; chỉ giờ chu kỳ về 0', 'rs-s'), 170),
+        [`Phiếu sửa chữa lớn hoàn thành mở một <b>đoạn</b> mới: giờ chu kỳ tính lại từ 0.`, `Các cảnh báo còn mở của đoạn cũ chuyển “Hủy do reset”.`, `Ngày reset theo tham số: ngày lập phiếu (theo V3) hoặc ngày ra xưởng.`]]); }
+    // 7. Điểm dừng hỏi
+    { const st = (x, cls, a, b2) => `<circle cx="${x}" cy="70" r="13" class="${cls}"/>` + T(x, 102, a, 'rs-t rs-b', 'middle') + T(x, 117, b2, 'rs-s', 'middle');
+      cards.push(['Demo dừng lại hỏi người dùng khi', svg(ln(30, 70, 370, 70, 'rs-ax', 'stroke-width="3"') + st(70, 'rs-a', 'Ngày 26', 'kế hoạch tháng sau') + st(200, 'rs-v', 'Vào vùng vàng', `còn ≤ ${f(cb)} ${u}`) + st(330, 'rs-d', 'Quá hạn', 'còn ≤ 0') +
+        T(200, 148, 'Lập phiếu & chạy tiếp · Chưa thực hiện · Dừng xem', 'rs-s', 'middle'), 160),
+        [`Ngày 26: ĐVSD đã báo cáo giờ, PKT lập kế hoạch tháng sau (SOP KT01).`, `Mỗi điểm dừng hỏi một lần cho mỗi cấp; tắt từng điểm ở bảng Thời gian.`, `Đã có phiếu cho cấp đó thì không hỏi lại.`]]); }
+    $('rulesGrid').innerHTML = cards.map(([tt, s, cap], i) => `<figure class="rule"><figcaption class="rh"><span class="rn">${i + 1}</span>${tt}</figcaption>${s}<ul>${cap.map(c => `<li>${c}</li>`).join('')}</ul></figure>`).join('');
+  }
+
+  function renderTable() {
+    const X = Math.floor(t), bx = $('tblBox'), u = U(); let h = '';
+    const tb = P.thiet_bi;
+    if (tab === 'ck') h = renderCK(X);
+    else if (tab === 'bc') {
+      const rows = R ? baoCao(R, X) : [];
+      h = rows.length ? `<table><thead><tr><th>Chu kỳ</th><th>Cấp</th><th class="num">Mốc (${u})</th><th class="num">Hiện tại (${u})</th><th class="num">Còn lại / Quá hạn</th><th>Ngày đến hạn</th><th>Dự báo</th><th>Màu</th><th>Phiếu</th></tr></thead><tbody>` +
+        rows.map(r => `<tr data-id="${r.line.id}"><td>${r.line.chu_ky}</td><td>${capChip(r.line.stt - 1, 'Cấp ' + esc(r.line.ma_cap))}</td><td class="num">${nf.format(r.line.gio_den_han)}</td><td class="num">${nf1.format(r.Hx)}</td><td class="num">${r.con > 0 ? 'còn ' + nf.format(r.con) : r.con === 0 ? 'đến hạn' : 'quá ' + nf.format(-r.con)}</td><td>${dvn(r.line.ngay_den_han)}</td><td>${r.duBao ? dvn(r.duBao) : ''}</td><td>${pillMau(r.mau)}</td><td>${esc(r.line.so_ct || '')}</td></tr>`).join('') + '</tbody></table>'
+        : `<div class="empty">Không có dòng cảnh báo nào tại ngày ${dvn(X)}.</div>`;
+    } else if (tab === 'all') {
+      h = `<table><thead><tr><th>ID</th><th>Đoạn</th><th>Gốc</th><th>Chu kỳ</th><th>Cấp</th><th class="num">Mốc cố định</th><th class="num">Mốc áp dụng</th><th class="num">Báo trước</th><th>Ngày sinh</th><th>Ngày đến hạn</th><th>Trạng thái</th><th>Ngày đóng</th><th class="num">Lúc BD (${u})</th><th>Phiếu</th></tr></thead><tbody>` +
+        R.lines.map(l => `<tr data-id="${l.id}"><td>${l.id}</td><td>${l.doan}</td><td>${l.loai_goc === 3 ? 'SC lớn' : 'Mốc KB'} ${dvn(l.ngay_goc)}</td><td>${l.chu_ky}</td><td>${esc(l.ma_cap)}</td><td class="num">${nf.format(l.gio_moc_cd)}</td><td class="num">${nf.format(l.gio_den_han)}</td><td class="num">${nf.format(l.gio_cb)}</td><td>${dvn(l.ngay_sinh)}</td><td>${dvn(l.ngay_den_han)}</td><td>${pillTT(l)}</td><td>${dvn(l.ngay_dong)}</td><td class="num">${l.gio_luc_bd != null ? nf.format(l.gio_luc_bd) : ''}</td><td>${esc(l.so_ct || '')}</td></tr>`).join('') + '</tbody></table>';
+    } else if (tab === 'log') {
+      h = R.log.length ? `<table><thead><tr><th>Mã lỗi</th><th>Ngày</th><th>Phiếu</th><th>Nội dung</th></tr></thead><tbody>` + R.log.map(g => `<tr><td><span class="pill p-cam">${esc(g.ma_loi)}</span></td><td>${dvn(g.ngay)}</td><td>${esc(g.so_ct)}</td><td>${esc(g.noi_dung)}</td></tr>`).join('') + '</tbody></table>' : '<div class="empty">Không có ngoại lệ. Kịch bản kiểm thử TC5 có ví dụ BD ngoài kế hoạch.</div>';
+    } else if (tab === 'kh') {
+      const rows = R ? baoCao(R, X).filter(r => segX && r.line.doan === segX.doan) : [];
+      h = `<div class="small" style="margin-bottom:8px">Theo biểu mẫu C4.KTCN.02 – PKT lập trước ngày 01 tháng sau, số liệu tính đến ngày ${dvn(X)}.</div>` + (rows.length ? `<table><thead><tr><th>Tên phương tiện</th><th>Biển số</th><th>Cấp BDKT</th><th class="num">${UL()} lần BD trước</th><th class="num">${UL()} đến lúc lập KH</th><th class="num">${UL()} đã hoạt động</th><th>Kế hoạch ngày vào BD</th><th>Ghi chú</th></tr></thead><tbody>` +
+        rows.map(r => { const l = r.line, tr = lanTruoc(l, X), ph = phieuOf(l.so_ct) || (P.phieu || []).find(p => p.loai === 'BD' && p.ma_cap === l.ma_cap && p.ngay_vao && dnum(p.ngay_vao) >= X); const kh = ph && ph.ngay_vao ? dvn(dnum(ph.ngay_vao)) + ' (' + esc(ph.so_ct) + ')' : r.duBao ? dvn(r.duBao) + ' (dự báo)' : '';
+          return `<tr data-id="${l.id}"><td>${esc(tb.ten_tb)}</td><td>${esc(tb.bien_so || '')}</td><td>${esc(l.ma_cap)}</td><td class="num">${nf.format(tr.gio)}</td><td class="num">${nf1.format(r.Hx)}</td><td class="num">${nf1.format(r.Hx - tr.gio)}</td><td>${kh}</td><td>${pillMau(r.mau)}</td></tr>`; }).join('') + '</tbody></table>' : '<div class="empty">Không có cấp nào cần đưa vào kế hoạch.</div>');
+    } else if (tab === 'kq') {
+      const rows = R.lines.filter(l => !l.khai_bao && l.trang_thai === 1 && l.ngay_dong <= X);
+      h = `<div class="small" style="margin-bottom:8px">Theo biểu mẫu C4.KTCN.03 – kết quả thực hiện bảo dưỡng đến ngày ${dvn(X)}.</div>` + (rows.length ? `<table><thead><tr><th>Tên phương tiện</th><th>Biển số</th><th>Ngày làm BD</th><th>Cấp BD</th><th class="num">${UL()} lần BD trước</th><th class="num">${UL()} đến lúc BD</th><th>Phiếu</th><th>Ghi chú</th></tr></thead><tbody>` +
+        rows.map(l => { const tr = lanTruoc(l, l.ngay_dong), ph = phieuOf(l.so_ct), lech = l.gio_luc_bd - l.gio_den_han; return `<tr data-id="${l.id}"><td>${esc(tb.ten_tb)}</td><td>${esc(tb.bien_so || '')}</td><td>${ph && ph.ngay_vao ? dvn(dnum(ph.ngay_vao)) + ' → ' : ''}${dvn(l.ngay_dong)}</td><td>${esc(l.ma_cap)}</td><td class="num">${nf.format(tr.gio)}</td><td class="num">${nf1.format(l.gio_luc_bd)}</td><td>${esc(l.so_ct)}</td><td>${lech > 0 ? `<span class="pill p-DO">Trễ ${nf.format(lech)} ${u}</span>` : `<span class="pill p-t1">Đúng hạn</span>`}</td></tr>`; }).join('') + '</tbody></table>' : '<div class="empty">Chưa có lần bảo dưỡng nào được nghiệm thu.</div>');
+    } else {
+      const tot = R.hrs.S(t1) - R.hrs.S(t0), nd = R.hrs.days.filter(d => d > t0 && d <= t1).length;
+      h = `<div class="small" style="margin-bottom:8px">Tổng ${UL()} hoạt động ${dvn(t0)} → ${dvn(t1)}: <b>${nf1.format(tot)} ${u}</b> · ${nd} ngày có số liệu · trung bình ${nf1.format(nd ? tot / nd : 0)} ${u}/ngày. Ngày nằm xưởng không phát sinh ${UL()}.</div>` +
+        ((P.phieu || []).length ? `<table><thead><tr><th>Số phiếu</th><th>Loại</th><th>Cấp</th><th>Ngày lập</th><th>Vào xưởng</th><th>Ra xưởng</th><th></th></tr></thead><tbody>` + P.phieu.map((p, i) => `<tr><td>${esc(p.so_ct)}</td><td>${p.loai === 'BD' ? 'Bảo dưỡng' : 'Sửa chữa lớn'}</td><td>${esc(p.ma_cap)}</td><td>${p.ngay_ct ? dvn(dnum(p.ngay_ct)) : ''}</td><td>${p.ngay_vao ? dvn(dnum(p.ngay_vao)) : ''}</td><td>${p.ngay_ra ? dvn(dnum(p.ngay_ra)) : ''}</td><td><button type="button" data-del="${i}">Xóa phiếu</button></td></tr>`).join('') + '</tbody></table>' : '<div class="empty">Chưa có phiếu. Bấm Chạy – demo sẽ dừng hỏi khi đến kỳ lập kế hoạch hoặc sắp đến hạn.</div>');
+    }
+    bx.innerHTML = h;
+  }
+  $('tblBox').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (del) { const i = Number(del.dataset.del), so = P.phieu[i].so_ct; edit(p => { p.phieu.splice(i, 1); }, `Đã xóa phiếu ${so} – cảnh báo đã tính lại.`); return; }
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const id = Number(tr.dataset.id), p = posts.get(id);
+    if (p) flyTo(p.pos); else { const l = R.lines.find(x => x.id === id); if (l && l.ngay_sinh >= t0 && l.ngay_sinh <= t1) { t = Math.max(l.ngay_sinh, Math.min(t1, l.ngay_den_han ?? l.ngay_sinh)); refresh(true); const q = posts.get(id); if (q) flyTo(q.pos); } }
+  });
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderTable(); }));
+
+  /* ---------------- form tham số ---------------- */
+  const setTg = (id, v) => { $(id).setAttribute('aria-pressed', String(!!v)); $(id).textContent = v ? 'Bật' : 'Tắt'; };
+  function dvtOptions(isKm, cur) { $('fDvt').innerHTML = isKm ? '<option value="KM">Km</option>' : `<option value="GIO"${cur === 'GIO' ? ' selected' : ''}>Giờ</option><option value="PHUT"${cur === 'PHUT' ? ' selected' : ''}>Phút</option>`; }
+  function renderDM() {
+    $('dmBody').innerHTML = P.dinh_muc.map((r, i) => `<tr data-i="${i}"><td><input class="cap" type="text" data-f="ma_cap" value="${esc(r.ma_cap)}" aria-label="Tên cấp"></td><td><input type="number" min="1" step="10" data-f="gio_dm" value="${r.gio_dm}" aria-label="Mốc"></td><td><input type="number" min="0" step="5" data-f="gio_cb" value="${r.gio_cb}" aria-label="Báo trước"></td><td><input type="number" min="1" step="1" data-f="gio_th" value="${r.gio_th}" aria-label="Thời gian hoàn thành, giờ làm việc"></td><td><button type="button" data-rm="${i}" title="Xóa cấp ${esc(r.ma_cap)}" aria-label="Xóa cấp ${esc(r.ma_cap)}">✕</button></td></tr>`).join('');
+  }
+  function fillForm() {
+    const tb = P.thiet_bi, m = P.moc_khai_bao, g = P.gio_hoat_dong, ts = P.tham_so, isKm = tb.dvt === 'KM', u = U();
+    $('fMaTb').value = tb.ma_tb || ''; $('fTenTb').value = tb.ten_tb || ''; $('fBienSo').value = tb.bien_so || ''; $('fDvsd').value = tb.dvsd || ''; $('fDvtTb').value = isKm ? 'KM' : 'GIO';
+    $('fNgayMoc').value = m.ngay_moc; $('fGioMoc').value = m.gio_moc; $('lbGioMoc').textContent = `${UL()} tại mốc (${u})`;
+    $('fCapGn').innerHTML = '<option value="">Chưa làm cấp nào trong chu kỳ</option>' + P.dinh_muc.map(r => `<option value="${esc(r.ma_cap)}"${r.ma_cap === m.ma_cap_gn ? ' selected' : ''}>Cấp ${esc(r.ma_cap)}</option>`).join('');
+    renderDM();
+    $('fCheDo').value = g.che_do === 'ngau_nhien' ? 'ngau_nhien' : 'deu'; dvtOptions(isKm, g.dvt_nhap);
+    $('fSoLuong').value = g.so_luong_moi_ngay; const n = g.ngau_nhien || {};
+    $('fMin').value = n.min; $('fMax').value = n.max; $('fNghi').value = Math.round((n.ty_le_ngay_nghi || 0) * 100); $('fSeed').value = n.seed;
+    document.querySelectorAll('.fg .deu').forEach(x => x.classList.toggle('hide', $('fCheDo').value !== 'deu'));
+    document.querySelectorAll('.fg .nn').forEach(x => x.classList.toggle('hide', $('fCheDo').value === 'deu'));
+    const tot = R.hrs.S(t1) - R.hrs.S(t0), nd = R.hrs.days.filter(d => d > t0 && d <= t1).length;
+    $('gioHint').textContent = `Trung bình ${nf1.format(nd ? tot / nd : 0)} ${u}/ngày làm việc · ${nd} ngày có số liệu trong khoảng demo. ĐVSD ghi sổ theo biểu mẫu C4.KTCN.01.`;
+    $('fTu').value = P.demo.tu_ngay; $('fDen').value = P.demo.den_ngay;
+    $('tgCD').setAttribute('aria-pressed', String(Number(ts.cach_tinh_moc) === 1)); $('tgTR').setAttribute('aria-pressed', String(Number(ts.cach_tinh_moc) === 2));
+    $('tgR1').setAttribute('aria-pressed', String(Number(ts.ngay_reset) === 1)); $('tgR2').setAttribute('aria-pressed', String(Number(ts.ngay_reset) === 2));
+    setTg('tgBT', ts.bao_trum); setTg('tgLap', ts.lap_chu_ky);
+    setTg('tgAskKH', askOn.kh); setTg('tgAsk', askOn.warn); setTg('tgAskDue', askOn.due);
+    $('selCap').innerHTML = P.dinh_muc.map(r => `<option value="${esc(r.ma_cap)}">Cấp ${esc(r.ma_cap)}</option>`).join('');
+    $('selModel').value = tb.mo_hinh;
+    $('sub').innerHTML = `<b>${esc(tb.ma_tb)}</b> · ${esc(tb.ten_tb)} · ${esc(tb.bien_so || '')} · ${esc(tb.dvsd || '')} · Cảng Quy Nhơn`;
+    document.querySelectorAll('[data-sp]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.sp) === speed)));
+    $('spTxt').textContent = speed;
+  }
+  const num = id => { const v = $(id).value; return v === '' ? NaN : Number(v); };
+  function readForm() {
+    const p = JSON.parse(JSON.stringify(P));
+    const isKm = $('fDvtTb').value === 'KM', wasKm = P.thiet_bi.dvt === 'KM';
+    Object.assign(p.thiet_bi, { ma_tb: $('fMaTb').value.trim(), ten_tb: $('fTenTb').value.trim(), bien_so: $('fBienSo').value.trim(), dvsd: $('fDvsd').value.trim(), dvt: isKm ? 'KM' : 'GIO', mo_hinh: $('selModel').value });
+    p.moc_khai_bao.ngay_moc = $('fNgayMoc').value; p.moc_khai_bao.gio_moc = num('fGioMoc'); p.moc_khai_bao.ma_cap_gn = $('fCapGn').value || null;
+    p.dinh_muc = [...$('dmBody').querySelectorAll('tr')].map(tr => { const v = f => tr.querySelector(`[data-f="${f}"]`).value; return { ma_cap: v('ma_cap').trim(), gio_dm: Number(v('gio_dm')), gio_cb: Number(v('gio_cb')), gio_th: Number(v('gio_th')) }; })
+      .sort((a, b) => a.gio_dm - b.gio_dm).map((r, i) => ({ ...r, stt: i + 1 }));
+    const g = p.gio_hoat_dong; g.che_do = $('fCheDo').value;
+    g.dvt_nhap = isKm ? 'KM' : (wasKm ? 'GIO' : $('fDvt').value);
+    g.so_luong_moi_ngay = num('fSoLuong'); g.ngau_nhien = { min: num('fMin'), max: num('fMax'), seed: num('fSeed') || 1, ty_le_ngay_nghi: num('fNghi') / 100 };
+    if (isKm !== wasKm) { g.so_luong_moi_ngay = isKm ? 160 : 10; g.ngau_nhien = isKm ? { min: 90, max: 230, seed: g.ngau_nhien.seed, ty_le_ngay_nghi: 0.1 } : { min: 6, max: 14, seed: g.ngau_nhien.seed, ty_le_ngay_nghi: 0.08 }; }
+    else if (g.dvt_nhap !== P.gio_hoat_dong.dvt_nhap) { const k = g.dvt_nhap === 'PHUT' ? 60 : 1 / 60; g.so_luong_moi_ngay = Math.round(g.so_luong_moi_ngay * k); g.ngau_nhien.min = Math.round(g.ngau_nhien.min * k); g.ngau_nhien.max = Math.round(g.ngau_nhien.max * k); }
+    p.demo.tu_ngay = $('fTu').value; p.demo.den_ngay = $('fDen').value;
+    return p;
+  }
+  const showMsg = (html) => { $('formMsg').innerHTML = html; };
+  function applyParams(np, keepT, msg) {
+    const full = merge(KICH_BAN.base(), np); const { e, w } = kiemTra(full);
+    if (e.length) { showMsg(`<div class="blk"><div class="err">Chưa áp dụng được – cần sửa:\n• ${e.map(esc).join('\n• ')}</div></div>`); return false; }
+    P = full; R = tinh(P); t0 = dnum(P.demo.tu_ngay); t1 = dnum(P.demo.den_ngay);
+    const rng = $('rng'); rng.min = '0'; rng.max = String(t1 - t0);
+    t = keepT ? Math.min(t1, Math.max(t0, t)) : t0; lastX = null; baseKey = '';
+    $('dFrom').textContent = dvn(t0); $('dTo').textContent = dvn(t1);
+    setMachine(P.thiet_bi.mo_hinh); buildEvents(); fillForm(); renderRules(); refresh(true);
+    $('runInfo').textContent = `Khoảng demo ${dvn(t0)} → ${dvn(t1)} (${t1 - t0} ngày).`;
+    showMsg((msg ? `<div class="okmsg">${esc(msg)}</div>` : '') + (w.length ? `<div class="small">Lưu ý: ${w.map(esc).join(' ')}</div>` : ''));
+    return true;
+  }
+  const edit = (f, msg) => { const p = JSON.parse(JSON.stringify(P)); f(p); const ok = applyParams(p, true, msg); if (ok) $('quickMsg').textContent = msg || ''; return ok; };
+  const panel = document.querySelector('aside.panel');
+  panel.addEventListener('change', e => {
+    const el = e.target; if (!el.closest('details') || el.closest('#dmBody') && !el.matches('input')) return;
+    if (applyParams(readForm(), true, 'Đã cập nhật tham số – cảnh báo đã tính lại.')) denGoc = P.demo.den_ngay;
+  });
+  $('dmBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-rm]'); if (!b) return;
+    if (P.dinh_muc.length <= 1) { showMsg('<div class="err">Định mức cần ít nhất 1 cấp.</div>'); return; }
+    const p = readForm(), cap = P.dinh_muc[Number(b.dataset.rm)].ma_cap; p.dinh_muc = p.dinh_muc.filter(r => r.ma_cap !== cap).map((r, i) => ({ ...r, stt: i + 1 }));
+    if (p.moc_khai_bao.ma_cap_gn === cap) p.moc_khai_bao.ma_cap_gn = null;
+    applyParams(p, true, `Đã xóa cấp ${cap}.`);
+  });
+  $('btnAddCap').onclick = () => {
+    const p = readForm(), last = p.dinh_muc[p.dinh_muc.length - 1] || { gio_dm: 0, gio_cb: U() === 'km' ? 600 : 60 }, step = p.dinh_muc.length > 1 ? last.gio_dm - p.dinh_muc[p.dinh_muc.length - 2].gio_dm : last.gio_dm || 300;
+    const g = last.gio_dm + step; p.dinh_muc.push({ ma_cap: String(g), stt: p.dinh_muc.length + 1, gio_dm: g, gio_cb: last.gio_cb, gio_th: sopGioTH(g, p.thiet_bi.dvt) });
+    applyParams(p, true, `Đã thêm cấp ${g} ${U()} – thời gian hoàn thành ${sopGioTH(g, p.thiet_bi.dvt)} giờ làm việc theo SOP.`);
+  };
+  $('selKB').innerHTML = `<optgroup label="Thiết bị mẫu theo SOP KT01">${KICH_BAN.presets.map(k => `<option value="${k.id}">${esc(k.ten)}</option>`).join('')}</optgroup><optgroup label="Kịch bản kiểm thử">${KICH_BAN.list.map(k => `<option value="${k.id}">${esc(k.ten)}</option>`).join('')}</optgroup>`;
+  $('selKB').addEventListener('change', e => { const p = KICH_BAN.get(e.target.value); p.dinh_muc.forEach(r => { if (r.gio_th == null) r.gio_th = sopGioTH(r.gio_dm, p.thiet_bi.dvt || 'GIO'); }); setPlay(false); asked.clear(); denGoc = p.demo.den_ngay; if (applyParams(p, false, 'Đã nạp ' + e.target.selectedOptions[0].textContent + '.') && !reduced) setPlay(true); });
+  $('selModel').addEventListener('change', e => edit(p => { p.thiet_bi.mo_hinh = e.target.value; }, ''));
+  $('tgCD').onclick = () => edit(p => { p.tham_so.cach_tinh_moc = 1; }, 'Đã chuyển sang mốc cố định theo chu kỳ.');
+  $('tgTR').onclick = () => edit(p => { p.tham_so.cach_tinh_moc = 2; }, 'Đã chuyển sang mốc trượt theo giờ thực tế lúc BD.');
+  $('tgR1').onclick = () => edit(p => { p.tham_so.ngay_reset = 1; }, 'Reset SC lớn theo ngày lập phiếu.');
+  $('tgR2').onclick = () => edit(p => { p.tham_so.ngay_reset = 2; }, 'Reset SC lớn theo ngày ra thực tế.');
+  $('tgBT').onclick = () => edit(p => { p.tham_so.bao_trum = !p.tham_so.bao_trum; }, 'Đã đổi tham số bao trùm.');
+  $('tgLap').onclick = () => edit(p => { p.tham_so.lap_chu_ky = !p.tham_so.lap_chu_ky; }, 'Đã đổi tham số lặp chu kỳ.');
+  [['tgAskKH', 'kh'], ['tgAsk', 'warn'], ['tgAskDue', 'due']].forEach(([id, k]) => $(id).onclick = () => { askOn[k] = !askOn[k]; setTg(id, askOn[k]); });
+  const nextSo = pre => { let n = 1; while ((P.phieu || []).some(p => p.so_ct === pre + String(n).padStart(3, '0'))) n++; return pre + String(n).padStart(3, '0'); };
+  $('btnAddBD').onclick = () => { const X = Math.floor(t), cap = $('selCap').value; const r = baoCao(R, X).find(x => x.line.ma_cap === cap && !daCoPhieu(x.line)); if (r) { openAsk('warn', r.line, X); return; } const so = nextSo('BD'), ra = Math.min(raTu(X, cap), t1); edit(p => { p.phieu.push({ so_ct: so, loai: 'BD', ma_cap: cap, ngay_ct: dstr(X), ngay_vao: dstr(X), ngay_ra: dstr(ra), nsd: true }); }, `Đã lập phiếu ${so} – BD cấp ${cap}, nằm xưởng ${dvn(X)} → ${dvn(ra)}.`); };
+  $('btnAddSC').onclick = () => { const X = Math.floor(t), so = nextSo('SCL'), ra = Math.min(addWork(X, 9), t1); edit(p => { p.phieu.push({ so_ct: so, loai: 'SC', ma_cap: 'BIG', ngay_ct: dstr(X), ngay_vao: dstr(X), ngay_ra: dstr(ra), nsd: true }); }, `Đã lập phiếu ${so} – sửa chữa lớn, nằm xưởng ${dvn(X)} → ${dvn(ra)}; giờ máy reset về 0.`); EV.filter(v => v.d === X && (v.k === 'reset' || v.k === 'vao')).forEach(v => fire(v, clock.getElapsedTime())); };
+
+  /* ---------------- điều khiển thời gian ---------------- */
+  function setPlay(v) { playing = v; $('btnPlay').textContent = v ? '⏸ Tạm dừng' : '▶ Chạy'; }
+  $('btnPlay').onclick = () => { if (!playing && Math.floor(t) >= t1) { t = t0; lastX = null; asked.clear(); } setPlay(!playing); };
+  $('btnStart').onclick = () => { t = t0; lastX = null; asked.clear(); refresh(true); };
+  function chayLai() {
+    setPlay(false); asked.clear();
+    const p = JSON.parse(JSON.stringify(P)), n = p.phieu.filter(x => x.nsd).length; p.phieu = p.phieu.filter(x => !x.nsd); if (denGoc) p.demo.den_ngay = denGoc;
+    if (applyParams(p, false, `Đã đặt lại: chạy lại từ ${nf.format(p.moc_khai_bao.gio_moc)} ${U()} ngày ${dvn(dnum(p.moc_khai_bao.ngay_moc))}${n ? `, xóa ${n} phiếu đã lập trong demo` : ''}.`)) { $('toasts').innerHTML = ''; if (!reduced) setPlay(true); }
+  }
+  function chayTiep() {
+    const d = new Date(t1 * 864e5), nd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 3, Math.min(d.getUTCDate(), 28)));
+    const p = JSON.parse(JSON.stringify(P)); p.demo.den_ngay = nd.toISOString().slice(0, 10);
+    const keep = t;
+    if (applyParams(p, true, `Đã kéo dài đến ${dvn(dnum(p.demo.den_ngay))} – giờ hoạt động cộng dồn tiếp, giữ nguyên các phiếu.`)) { t = keep; lastX = null; refresh(true); if (!reduced) setPlay(true); }
+  }
+  $('btnReset').onclick = chayLai; $('btnReset2').onclick = chayLai;
+  $('btnMore').onclick = chayTiep; $('btnMore2').onclick = chayTiep;
+  document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => { speed = Number(b.dataset.sp); fillForm(); });
+  $('rng').addEventListener('input', e => { const X = t0 + Number(e.target.value), prev = Math.floor(t); t = X; if (X - prev > 0 && X - prev <= 2) EV.filter(v => v.d > prev && v.d <= X).forEach(v => fire(v, clock.getElapsedTime())); refresh(); });
+
+  /* ---------------- vòng lặp ---------------- */
+  const clock = new THREE.Clock(); let prevNow = 0, lyCur = 0;
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.fov = w < 560 ? 52 : 40; camera.updateProjectionMatrix(); if (!resize.done) { cam.r = w < 560 ? 31 : 26; resize.done = true; } }
+  new ResizeObserver(resize).observe(stage);
+  function frame() {
+    const now = clock.getElapsedTime(), dt = Math.min(0.05, now - prevNow); prevNow = now;
+    if (playing) {
+      const prevX = Math.floor(t); t = Math.min(t1, t + dt * speed); const X = Math.floor(t);
+      if (X > prevX) for (const v of EV.filter(v => v.d > prevX && v.d <= X)) { fire(v, now); if (checkAsk(v)) break; }
+      if (playing && t >= t1) setPlay(false);
+    }
+    refresh();
+    const X = Math.floor(t), fr = t - X, u = U();
+    let Hf = 0, ckF = 1;
+    if (segX && R) { Hf = R.H(segX.ngay_goc, segX.gio_goc, X) + (playing && X + 1 <= t1 && !(R.segs.some(s => s.ngay_goc === X + 1)) ? fr * R.hrs.gio(X + 1) : 0); ckF = Math.max(1, Math.ceil(Hf / R.C - 1e-9)); }
+    for (let ck = 1; ck < prog.length; ck++) if (prog[ck]) { const f = ck < ckF ? 1 : ck === ckF ? fracOf(Hf, ck) : 0; prog[ck].geometry.setDrawRange(0, Math.round(f * 360) * 6); }
+    let ang = angOf(segX ? fracOf(Hf, ckF) : 0), ny = lvY(ckF) + 0.3;
+    if (needleAnim) { needleAnim.t += dt; const k = Math.min(1, needleAnim.t / needleAnim.dur), e = 1 - Math.pow(1 - k, 3); ang = needleAnim.from + (ang - needleAnim.from) * e; ny = needleAnim.y0 + (ny - needleAnim.y0) * e; if (k >= 1) needleAnim = null; }
+    needle.rotation.y = ang; needle.position.y = ny;
+    const xu = inXuong(X);
+    const focus = rowsX.find(r => r.mau === 'DO') || rowsX.find(r => r.mau === 'VANG') || rowsX[rowsX.length - 1];
+    const l1 = `${u === 'km' ? 'Km' : 'H'} = ${nf1.format(Hf)} ${u}`;
+    if (xu) drawLed(l1, `Nằm xưởng · ${xu.loai === 'BD' ? 'BD cấp ' + xu.ma_cap : 'SC lớn'}`, 'DA_BD');
+    else if (focus) { const c = focus.line.gio_den_han - Hf; drawLed(l1, c > 0 ? `Còn ${nf.format(Math.max(0, c))} ${u} → Cấp ${focus.line.ma_cap}` : c === 0 ? `Đến hạn · Cấp ${focus.line.ma_cap}` : `Quá ${nf.format(-c)} ${u} · Cấp ${focus.line.ma_cap}`, c <= 0 ? 'DO' : c <= focus.line.gio_cb ? 'VANG' : 'TRANG'); }
+    else drawLed(l1, segX ? 'Không có cảnh báo' : 'Chưa khai báo mốc', 'TRANG');
+    $('hudH').textContent = `Chu kỳ ${ckF} · ${l1}`;
+    const odo = P.moc_khai_bao.gio_moc + R.hrs.S(X) - R.hrs.S(dnum(P.moc_khai_bao.ngay_moc)) + (playing && X + 1 <= t1 ? fr * R.hrs.gio(X + 1) : 0);
+    const odoTxt = nf1.format(Math.max(0, odo)); if ($('odo').textContent !== odoTxt) $('odo').textContent = odoTxt; $('odoU').textContent = u;
+    const showEnd = !playing && X >= t1 && !$('askDlg').open;
+    if ($('endCard').hidden === showEnd) { $('endCard').hidden = !showEnd; if (showEnd) { const nBD = R.lines.filter(l => !l.khai_bao && l.trang_thai === 1 && l.ngay_dong <= X).length; $('endTxt').textContent = `Lũy kế ${odoTxt} ${u} · đang ở chu kỳ ${ckF} · ${nBD} lần bảo dưỡng đã nghiệm thu. Chạy tiếp để cộng dồn giờ, hoặc chạy lại từ đầu.`; } }
+    const worst = rowsX.some(r => r.mau === 'DO') ? 'DO' : rowsX.some(r => r.mau === 'VANG') ? 'VANG' : 'OK';
+    if (MC) {
+      const hx = xu ? COL.accent : worst === 'DO' ? COL.do : worst === 'VANG' ? COL.vang : COL.xanh, hz = xu ? 0 : worst === 'DO' ? 2.2 : worst === 'VANG' ? 0.8 : 0;
+      const on = reduced || hz === 0 ? 1 : (Math.sin(now * hz * Math.PI * 2) > 0 ? 1 : 0.15);
+      MC.beacon.material.color.set(hx).multiplyScalar(on); MC.blight.color.set(hx); MC.blight.intensity = (worst === 'OK' || xu ? 0.4 : 2.2) * on * (now < flashUntil ? 1.6 : 1);
+      const run = playing && !xu && R.hrs.gio(X + 1) > 0;
+      MC.wheels.forEach(w => { if (run) w.rotation.z -= dt * speed * 1.3; });
+      MC.anim(now, run && !reduced);
+      bang.sprite.visible = now < bangUntil;
+      const target = xu ? 1 : 0; lyCur += (target - lyCur) * Math.min(1, dt * (reduced ? 60 : 3)); MC.g.position.y = lyCur; stands.visible = lyCur > 0.02;
+      smokeT += dt; if (run && !reduced && smokeT > 0.18) { smokeT = 0; const s = smoke.find(x => x.userData.life <= 0); if (s) { s.position.copy(MC.exhaust).applyMatrix4(MC.g.matrixWorld); s.userData.life = 1.6; s.scale.setScalar(0.3); } }
+      smoke.forEach(s => { if (s.userData.life > 0) { s.userData.life -= dt; s.position.y += dt * 1.1; s.position.x += dt * 0.3; s.scale.addScalar(dt * 0.9); s.material.opacity = Math.max(0, s.userData.life / 1.6) * 0.55; } else s.material.opacity = 0; });
+    }
+    for (const [id, until] of shake) { const p = posts.get(id); if (!p || now > until) { shake.delete(id); if (p) p.g.rotation.set(0, 0, 0); continue; } if (!reduced) p.g.rotation.z = Math.sin(now * 40) * 0.12; }
+    if (ghost) { ghost.userData.t += dt; const k = ghost.userData.t / 1.6; ghost.traverse(o => { if (o.material && !o.isSprite) { o.material.opacity = Math.max(0, 0.9 * (1 - k)); o.material.color?.lerp?.(new THREE.Color(COL.xam), 0.08); } }); ghost.position.y = -k * 0.6; if (k >= 1) { scene.remove(ghost); ghost = null; } }
+    for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.t += dt; f.upd(f.t, dt); if (f.t >= f.dur) { scene.remove(f.g); f.g.traverse(o => o.geometry && o.geometry.dispose()); fx.splice(i, 1); } }
+    if (!reduced) water.position.y = -0.55 + Math.sin(now * 0.8) * 0.04;
+    if (cam.fly) { cam.fly.t += dt / 0.9; const k = Math.min(1, cam.fly.t), e = k * k * (3 - 2 * k); cam.tgt.lerpVectors(cam.fly.from, cam.fly.to, e); cam.r = cam.fly.r0 + (cam.fly.r1 - cam.fly.r0) * e; if (k >= 1) cam.fly = null; }
+    placeCam(); renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------------- khởi động ---------------- */
+  readTheme(); resize();
+  applyParams(P, false, ''); denGoc = P.demo.den_ngay;
+  speed = Number(P.demo.toc_do_ngay_moi_giay) || 3; fillForm();
+  if (P.demo.tu_chay && !reduced) setPlay(true);
+  requestAnimationFrame(frame);
+  document.fonts?.ready.then(() => { labelCache.clear(); ledKey = ''; baseKey = ''; lastX = null; refresh(true); });
+})();
+
+</script>
+
+</body>
+</html>
